@@ -1,4 +1,5 @@
 import { Nota } from "../types/nota";
+import { generateId } from "./api";
 
 const STORAGE_KEY = "madera_boutique_notas";
 const COUNTER_KEY = "madera_boutique_counter";
@@ -38,7 +39,7 @@ export const storageUtils = {
     const notas = storageUtils.getNotas();
     const newNota: Nota = {
       ...nota,
-      id: crypto.randomUUID(),
+      id: generateId(),
       numeroNota: storageUtils.getNextNumeroNota(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

@@ -13,6 +13,7 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Nota, Abono } from "../types/nota";
 import { Trash2, Plus } from "lucide-react";
+import { generateId } from "../utils/api";
 
 interface AbonosDialogProps {
   nota: Nota;
@@ -37,7 +38,7 @@ export function AbonosDialog({ nota, open, onOpenChange, onUpdate }: AbonosDialo
     }
 
     const nuevoAbono: Abono = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       fecha: new Date().toISOString(),
       monto,
       nota: nuevaNota || undefined,

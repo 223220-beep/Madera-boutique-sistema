@@ -7,6 +7,16 @@ const SERVER_URL = window.location.hostname === 'localhost' || window.location.h
 
 export const API_BASE = SERVER_URL;
 
+// Generador de ID seguro para contextos no-HTTPS
+export const generateId = () => {
+    try {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+    } catch (e) { }
+    return Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+};
+
 // ========== Funciones auxiliares ==========
 
 async function request(endpoint: string, options?: RequestInit) {

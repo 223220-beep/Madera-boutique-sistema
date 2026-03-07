@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ItemNota } from "../types/nota";
+import { generateId } from "../utils/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -37,7 +38,7 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
   const [items, setItems] = useState<ItemNota[]>(
     initialData?.items || [
       {
-        id: crypto.randomUUID(),
+        id: generateId(),
         cantidad: 0,
         descripcion: "",
         precioUnitario: 0,
@@ -54,7 +55,7 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
     setItems([
       ...items,
       {
-        id: crypto.randomUUID(),
+        id: generateId(),
         cantidad: 0,
         descripcion: "",
         precioUnitario: 0,
