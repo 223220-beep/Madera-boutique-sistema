@@ -11,19 +11,27 @@ export const API_BASE = SERVER_URL;
 
 async function request(endpoint: string, options?: RequestInit) {
     const url = `${API_BASE}${endpoint}`;
-    const response = await fetch(url, {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        ...options,
-    });
+    console.log(`📡 [API Request] ${options?.method || 'GET'} ${url}`);
 
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Error desconocido' }));
-        throw new Error(error.error || `HTTP ${response.status}`);
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            ...options,
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Error desconocido' }));
+            console.error(`❌ [API Error] ${response.status} ${url}`, error);
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    } catch (err) {
+        console.error(`🔥 [Network Error] ${url}`, err);
+        throw err;
     }
-
-    return response.json();
 }
 
 // ========== API de Notas ==========
