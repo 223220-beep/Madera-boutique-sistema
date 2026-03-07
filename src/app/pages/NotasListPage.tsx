@@ -215,13 +215,17 @@ export function NotasListPage() {
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         <div className="flex flex-col items-end">
-                          {nota.abonos && nota.abonos.length > 0 ? (
+                          {nota.abonos && Array.isArray(nota.abonos) && nota.abonos.length > 0 ? (
                             <>
-                              <span className="text-xs text-gray-400 line-through">${nota.total.toFixed(2)}</span>
-                              <span className="text-red-600">${(nota.total - (nota.abonos.reduce((s, a) => s + a.monto, 0))).toFixed(2)}</span>
+                              <span className="text-xs text-gray-400 line-through">
+                                ${typeof nota.total === 'number' ? nota.total.toFixed(2) : '0.00'}
+                              </span>
+                              <span className="text-red-600">
+                                ${((nota.total || 0) - (nota.abonos.reduce((s, a) => s + (a.monto || 0), 0))).toFixed(2)}
+                              </span>
                             </>
                           ) : (
-                            <span>${nota.total.toFixed(2)}</span>
+                            <span>${typeof nota.total === 'number' ? nota.total.toFixed(2) : '0.00'}</span>
                           )}
                         </div>
                       </TableCell>
