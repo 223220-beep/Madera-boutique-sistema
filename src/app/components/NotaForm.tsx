@@ -11,16 +11,18 @@ interface NotaFormProps {
   initialData?: {
     fecha: string;
     clienteNombre: string;
-    clienteDomicilio: string;
     clienteTelefono: string;
+    fechaEvento?: string;
+    fechaEntrega?: string;
     items: ItemNota[];
     imagenesReferencia?: string[];
   };
   onSubmit: (data: {
     fecha: string;
     clienteNombre: string;
-    clienteDomicilio: string;
     clienteTelefono: string;
+    fechaEvento?: string;
+    fechaEntrega?: string;
     items: ItemNota[];
     total: number;
     imagenesReferencia: string[];
@@ -32,8 +34,9 @@ interface NotaFormProps {
 export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear Nota" }: NotaFormProps) {
   const [fecha, setFecha] = useState(initialData?.fecha || new Date().toISOString().split("T")[0]);
   const [clienteNombre, setClienteNombre] = useState(initialData?.clienteNombre || "");
-  const [clienteDomicilio, setClienteDomicilio] = useState(initialData?.clienteDomicilio || "");
   const [clienteTelefono, setClienteTelefono] = useState(initialData?.clienteTelefono || "");
+  const [fechaEvento, setFechaEvento] = useState(initialData?.fechaEvento || "");
+  const [fechaEntrega, setFechaEntrega] = useState(initialData?.fechaEntrega || "");
   const [imagenesReferencia, setImagenesReferencia] = useState<string[]>(initialData?.imagenesReferencia || []);
   const [items, setItems] = useState<ItemNota[]>(
     initialData?.items || [
@@ -98,8 +101,9 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
     onSubmit({
       fecha,
       clienteNombre,
-      clienteDomicilio,
       clienteTelefono,
+      fechaEvento,
+      fechaEntrega,
       items,
       total,
       imagenesReferencia,
@@ -177,34 +181,47 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
       {/* Cliente */}
       <div className="bg-gradient-to-br from-[#ff7908] to-[#ffac08] text-white p-4 rounded-lg">
         <h3 className="text-center font-bold mb-4">CLIENTE</h3>
-        <div className="space-y-3">
-          <div>
-            <Label className="text-white">Nombre:</Label>
-            <Input
-              type="text"
-              value={clienteNombre}
-              onChange={(e) => setClienteNombre(e.target.value)}
-              className="bg-white text-black mt-1"
-              required
-            />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-white">Nombre:</Label>
+              <Input
+                type="text"
+                value={clienteNombre}
+                onChange={(e) => setClienteNombre(e.target.value)}
+                className="bg-white text-black mt-1"
+                required
+              />
+            </div>
+            <div>
+              <Label className="text-white">Tel:</Label>
+              <Input
+                type="tel"
+                value={clienteTelefono}
+                onChange={(e) => setClienteTelefono(e.target.value)}
+                className="bg-white text-black mt-1"
+              />
+            </div>
           </div>
-          <div>
-            <Label className="text-white">Domicilio:</Label>
-            <Input
-              type="text"
-              value={clienteDomicilio}
-              onChange={(e) => setClienteDomicilio(e.target.value)}
-              className="bg-white text-black mt-1"
-            />
-          </div>
-          <div>
-            <Label className="text-white">Tel:</Label>
-            <Input
-              type="tel"
-              value={clienteTelefono}
-              onChange={(e) => setClienteTelefono(e.target.value)}
-              className="bg-white text-black mt-1"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-white">Fecha de Evento:</Label>
+              <Input
+                type="text"
+                value={fechaEvento}
+                onChange={(e) => setFechaEvento(e.target.value)}
+                className="bg-white text-black mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-white">Fecha de Entrega:</Label>
+              <Input
+                type="text"
+                value={fechaEntrega}
+                onChange={(e) => setFechaEntrega(e.target.value)}
+                className="bg-white text-black mt-1"
+              />
+            </div>
           </div>
         </div>
       </div>

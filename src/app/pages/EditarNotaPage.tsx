@@ -58,8 +58,9 @@ export function EditarNotaPage() {
             initialData={{
               fecha: nota.fecha,
               clienteNombre: nota.clienteNombre,
-              clienteDomicilio: nota.clienteDomicilio,
               clienteTelefono: nota.clienteTelefono,
+              fechaEvento: nota.fechaEvento,
+              fechaEntrega: nota.fechaEntrega,
               items: nota.items,
               imagenesReferencia: nota.imagenesReferencia,
             }}

@@ -18,8 +18,9 @@ export interface Nota {
   numeroNota: string;
   fecha: string;
   clienteNombre: string;
-  clienteDomicilio: string;
   clienteTelefono: string;
+  fechaEvento?: string;
+  fechaEntrega?: string;
   items: ItemNota[];
   total: number;
   createdAt: string;

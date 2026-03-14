@@ -192,20 +192,29 @@ export function VerNotaPage() {
           {/* Cliente */}
           <div className="bg-gradient-to-br from-[#ff7908] to-[#ffac08] text-white p-4 rounded-lg mb-6">
             <h3 className="text-center font-bold mb-4">CLIENTE</h3>
-            <div className="space-y-2">
-              <p>
-                <span className="font-semibold">Nombre:</span> {nota.clienteNombre}
-              </p>
-              {nota.clienteDomicilio && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <p>
-                  <span className="font-semibold">Domicilio:</span> {nota.clienteDomicilio}
+                  <span className="font-semibold">Nombre:</span> {nota.clienteNombre}
                 </p>
-              )}
-              {nota.clienteTelefono && (
-                <p>
-                  <span className="font-semibold">Tel:</span> {nota.clienteTelefono}
-                </p>
-              )}
+                {nota.clienteTelefono && (
+                  <p>
+                    <span className="font-semibold">Tel:</span> {nota.clienteTelefono}
+                  </p>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {nota.fechaEvento && (
+                  <p>
+                    <span className="font-semibold">Fecha de Evento:</span> {nota.fechaEvento}
+                  </p>
+                )}
+                {nota.fechaEntrega && (
+                  <p>
+                    <span className="font-semibold">Fecha de Entrega:</span> {nota.fechaEntrega}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 

@@ -56,8 +56,9 @@ async function initDatabase() {
       numeroNota TEXT NOT NULL UNIQUE,
       fecha TEXT NOT NULL,
       clienteNombre TEXT NOT NULL,
-      clienteDomicilio TEXT DEFAULT '',
       clienteTelefono TEXT DEFAULT '',
+      fechaEvento TEXT DEFAULT '',
+      fechaEntrega TEXT DEFAULT '',
       total REAL DEFAULT 0,
       terminada INTEGER DEFAULT 0,
       pagada INTEGER DEFAULT 0,
@@ -133,11 +134,17 @@ async function initDatabase() {
     db.run("INSERT INTO contador (clave, valor) VALUES ('nota', 0)");
   }
 
-  // Migración para añadir columna eliminada si ya existía la DB
+  // Migración para añadir columna eliminada y nuevas fechas si ya existía la DB
   try {
     db.run('ALTER TABLE notas ADD COLUMN eliminada INTEGER DEFAULT 0');
   } catch (e) {
     // La columna ya existe, ignorar el error
+  }
+  try {
+    db.run('ALTER TABLE notas ADD COLUMN fechaEvento TEXT DEFAULT ""');
+    db.run('ALTER TABLE notas ADD COLUMN fechaEntrega TEXT DEFAULT ""');
+  } catch (e) {
+    // Las columnas ya existen, ignorar el error
   }
 
   saveDatabase();
@@ -211,11 +218,11 @@ function createNota(data) {
   const now = new Date().toISOString();
 
   db.run(`
-    INSERT INTO notas (id, numeroNota, fecha, clienteNombre, clienteDomicilio, clienteTelefono, total, terminada, pagada, entregada, asignadoA, viaWhatsapp, eliminada, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO notas (id, numeroNota, fecha, clienteNombre, clienteTelefono, fechaEvento, fechaEntrega, total, terminada, pagada, entregada, asignadoA, viaWhatsapp, eliminada, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     id, numeroNota, data.fecha, data.clienteNombre,
-    data.clienteDomicilio || '', data.clienteTelefono || '',
+    data.clienteTelefono || '', data.fechaEvento || '', data.fechaEntrega || '',
     data.total || 0,
     data.terminada ? 1 : 0, data.pagada ? 1 : 0, data.entregada ? 1 : 0,
     data.asignadoA || null, data.viaWhatsapp ? 1 : 0, 0,
@@ -268,7 +275,7 @@ function updateNota(id, updates) {
   const now = new Date().toISOString();
 
   // Campos simples
-  const simpleFields = ['fecha', 'clienteNombre', 'clienteDomicilio', 'clienteTelefono', 'total', 'asignadoA'];
+  const simpleFields = ['fecha', 'clienteNombre', 'clienteTelefono', 'fechaEvento', 'fechaEntrega', 'total', 'asignadoA'];
   const boolFields = ['terminada', 'pagada', 'entregada', 'viaWhatsapp', 'eliminada'];
 
   const setClauses = ['updatedAt = ?'];
