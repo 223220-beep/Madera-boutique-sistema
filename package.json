@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite",
+    "dev": "vite --host",
     "server": "node server/index.cjs",
     "start": "node server/index.cjs"
   },
