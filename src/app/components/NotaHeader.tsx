@@ -61,25 +61,25 @@ export function NotaHeader({ showFullHeader = true }: NotaHeaderProps) {
       </div>
 
       {showFullHeader && (
-        <div className="text-xs text-[#ff7908] text-center mb-4 flex items-center justify-center gap-1">
-          <MapPin className="w-3 h-3" />
+        <div className="text-sm font-medium text-[#ff7908] flex items-center justify-center gap-2 mb-4 ml-8">
+          <MapPin className="w-4 h-4" />
           <p>José María Morelos #22. Col. Altejar. San Cristóbal de Las Casas, Chiapas.</p>
         </div>
       )}
 
-      <div className="flex items-center gap-4 text-sm text-[#ff7908]">
-        <div className="flex-1 flex items-start gap-2">
-          <Clock className="w-4 h-4 mt-0.5" />
+      <div className="flex items-center gap-8 text-base text-[#ff7908] ml-12">
+        <div className="flex-1 flex items-start gap-2 justify-end pr-12">
+          <Clock className="w-5 h-5 mt-0.5" />
           <div>
-            <p className="font-semibold mb-1">Lunes a Viernes:</p>
-            <p className="text-xs">10 a 20 h.</p>
+            <p className="font-bold mb-1">Lunes a Viernes:</p>
+            <p className="text-sm font-medium">10 a 20 h.</p>
           </div>
         </div>
-        <div className="flex-1 flex items-start gap-2">
-          <Clock className="w-4 h-4 mt-0.5" />
+        <div className="flex-1 flex items-start gap-2 pl-4">
+          <Clock className="w-5 h-5 mt-0.5" />
           <div>
-            <p className="font-semibold mb-1">Sábados</p>
-            <p className="text-xs">10 a 15:00 h.</p>
+            <p className="font-bold mb-1">Sábados</p>
+            <p className="text-sm font-medium">10 a 15:00 h.</p>
           </div>
         </div>
       </div>
