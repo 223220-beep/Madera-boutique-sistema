@@ -177,6 +177,14 @@ async function start() {
   });
 }
 
+// Global crash handlers to prevent the server from exiting silently over days
+process.on('uncaughtException', (err) => {
+  console.error('🔥 CRÍTICO: Excepción no capturada:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🔥 CRÍTICO: Promesa no manejada:', reason);
+});
+
 start().catch(err => {
   console.error('Error al iniciar servidor:', err);
   process.exit(1);

@@ -23,7 +23,7 @@ import {
 } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
-import { CheckCircle2, Eye } from "lucide-react";
+import { CheckCircle2, Eye, Flame, UserMinus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Settings } from "lucide-react";
 import { GestionDisenadoresDialog } from "../components/GestionDisenadoresDialog";
@@ -79,18 +79,51 @@ export function DisenadoresPage() {
     let notasFiltradas = notas;
 
     if (selectedDisenador) {
-      notasFiltradas = notas.filter((nota) => nota.asignadoA === selectedDisenador);
+      notasFiltradas = notasFiltradas.filter((nota) => nota.asignadoA && nota.asignadoA.includes(selectedDisenador));
     }
 
-    setNotasPendientes(notasFiltradas.filter((n) => !n.asignadoA));
-    setNotasEnProceso(notasFiltradas.filter((n) => n.asignadoA && !n.terminada));
+    // Notas pendientes SIEMPRE son las que no tienen asignación (ignorando el filtro de diseñador)
+    setNotasPendientes(notas.filter((n) => !n.asignadoA || n.asignadoA.length === 0).sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)));
+
+    // Las demás notas sí respetan el filtro
+    setNotasEnProceso(notasFiltradas.filter((n) => n.asignadoA && n.asignadoA.length > 0 && !n.terminada).sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)));
     setNotasTerminadas(notasFiltradas.filter((n) => n.terminada));
   };
 
-  const asignarDisenador = async (notaId: string, disenador: string) => {
+  const toggleUrgencia = async (notaId: string, actual: boolean) => {
     try {
-      await notasApi.patch(notaId, { asignadoA: disenador });
-      toast.success(`Nota asignada a ${disenador}`);
+      await notasApi.patch(notaId, { urgente: !actual });
+      toast.success(actual ? "Se quitó la urgencia" : "¡Nota marcada como URGENTE!");
+      cargarNotas();
+    } catch (err) {
+      toast.error("Error al cambiar urgencia");
+    }
+  };
+
+  const desasignarDisenador = async (notaId: string) => {
+    try {
+      await notasApi.patch(notaId, { asignadoA: [] });
+      toast.success("Nota devuelta a pendientes");
+      cargarNotas();
+    } catch (err) {
+      toast.error("Error al desasignar");
+    }
+  };
+
+  const asignarDisenador = async (nota: Nota, disenador: string) => {
+    try {
+      const actuales = nota.asignadoA || [];
+      if (actuales.includes(disenador)) {
+        toast.info(`${disenador} ya estaba asignado a esta nota`);
+        return;
+      }
+      if (actuales.length >= 2) {
+        toast.error("No puedes asignar más de 2 diseñadores");
+        return;
+      }
+      const nuevaLista = [...actuales, disenador];
+      await notasApi.patch(nota.id, { asignadoA: nuevaLista });
+      toast.success(`Nota asignada a ${nuevaLista.join(' y ')}`);
       cargarNotas();
     } catch (err) {
       toast.error("Error al asignar diseñador");
@@ -122,7 +155,7 @@ export function DisenadoresPage() {
     const stats: { [key: string]: { total: number; enProceso: number; terminadas: number } } = {};
 
     disenadores.forEach((disenador) => {
-      const notasDisenador = notas.filter((n) => n.asignadoA === disenador);
+      const notasDisenador = notas.filter((n) => n.asignadoA && n.asignadoA.includes(disenador));
       stats[disenador] = {
         total: notasDisenador.length,
         enProceso: notasDisenador.filter((n) => !n.terminada).length,
@@ -134,17 +167,26 @@ export function DisenadoresPage() {
   };
 
   const NotaCard = ({ nota, showAssign = false }: { nota: Nota; showAssign?: boolean }) => (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className={`hover:shadow-lg transition-shadow relative ${nota.urgente ? 'border-red-500 shadow-red-100 bg-red-50' : ''}`}>
+      {nota.urgente && (
+        <div className="absolute -top-3 -right-3 bg-red-600 text-white p-1.5 rounded-full shadow-lg">
+          <Flame className="w-5 h-5 animate-pulse" />
+        </div>
+      )}
       <CardHeader>
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-lg text-orange-600">Nota #{nota.numeroNota}</CardTitle>
+            <CardTitle className={`text-lg ${nota.urgente ? 'text-red-700 font-extrabold' : 'text-orange-600'}`}>Nota #{nota.numeroNota}</CardTitle>
             <CardDescription>{nota.clienteNombre}</CardDescription>
           </div>
-          {nota.asignadoA && (
-            <Badge variant="outline" className="bg-orange-600 text-white">
-              {nota.asignadoA}
-            </Badge>
+          {nota.asignadoA && nota.asignadoA.length > 0 && (
+            <div className="flex flex-col gap-1 items-end">
+              {nota.asignadoA.map((d) => (
+                <Badge key={d} variant="outline" className={`text-white ${nota.urgente ? 'bg-red-600 border-red-700' : 'bg-orange-600'}`}>
+                  {d}
+                </Badge>
+              ))}
+            </div>
           )}
         </div>
       </CardHeader>
@@ -163,15 +205,43 @@ export function DisenadoresPage() {
           size="sm"
         />
 
-        {showAssign && !nota.asignadoA && (
-          <div className="space-y-2">
-            <Label className="text-xs">Asignar a:</Label>
-            <Select onValueChange={(value) => asignarDisenador(nota.id, value)}>
+        <div className="flex justify-between items-center mt-2">
+          {!nota.terminada && (
+            <Button
+              variant={nota.urgente ? "destructive" : "outline"}
+              size="sm"
+              onClick={() => toggleUrgencia(nota.id, !!nota.urgente)}
+              className="text-xs"
+            >
+              <Flame className="w-4 h-4 mr-1" />
+              {nota.urgente ? 'Urgente' : 'Marcar Urgente'}
+            </Button>
+          )}
+
+          {nota.asignadoA && nota.asignadoA.length > 0 && !nota.terminada && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="text-xs bg-red-100 text-red-700 hover:bg-red-200"
+              onClick={() => desasignarDisenador(nota.id)}
+            >
+              <UserMinus className="w-4 h-4 mr-1" />
+              Quitar
+            </Button>
+          )}
+        </div>
+
+        {((showAssign && (!nota.asignadoA || nota.asignadoA.length === 0)) || (!nota.terminada && nota.asignadoA && nota.asignadoA.length === 1)) && (
+          <div className="space-y-2 mt-4 border-t pt-3">
+            <Label className="text-xs text-gray-500">
+              {!nota.asignadoA || nota.asignadoA.length === 0 ? "Asignar diseñador:" : "Agregar 2do diseñador:"}
+            </Label>
+            <Select onValueChange={(value) => asignarDisenador(nota, value)}>
               <SelectTrigger className="text-sm">
                 <SelectValue placeholder="Seleccionar diseñador" />
               </SelectTrigger>
               <SelectContent>
-                {disenadores.map((disenador) => (
+                {disenadores.filter(d => !(nota.asignadoA || []).includes(d)).map((disenador) => (
                   <SelectItem key={disenador} value={disenador}>
                     {disenador}
                   </SelectItem>
@@ -188,7 +258,7 @@ export function DisenadoresPage() {
               Ver
             </Button>
           </Link>
-          {nota.asignadoA && !nota.terminada && (
+          {nota.asignadoA && nota.asignadoA.length > 0 && !nota.terminada && (
             <Button
               size="sm"
               onClick={() => marcarComoTerminada(nota.id)}

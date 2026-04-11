@@ -64,6 +64,7 @@ async function initDatabase() {
       pagada INTEGER DEFAULT 0,
       entregada INTEGER DEFAULT 0,
       asignadoA TEXT DEFAULT NULL,
+      urgente INTEGER DEFAULT 0,
       viaWhatsapp INTEGER DEFAULT 0,
       eliminada INTEGER DEFAULT 0,
       createdAt TEXT NOT NULL,
@@ -146,6 +147,10 @@ async function initDatabase() {
   } catch (e) {
     // Las columnas ya existen, ignorar el error
   }
+  try {
+    db.run('ALTER TABLE notas ADD COLUMN urgente INTEGER DEFAULT 0');
+  } catch (e) {
+  }
 
   saveDatabase();
   console.log('✅ Tablas de base de datos inicializadas');
@@ -156,13 +161,16 @@ async function initDatabase() {
 
 function queryAll(sql, params = []) {
   const stmt = db.prepare(sql);
-  stmt.bind(params);
-  const results = [];
-  while (stmt.step()) {
-    results.push(stmt.getAsObject());
+  try {
+    stmt.bind(params);
+    const results = [];
+    while (stmt.step()) {
+      results.push(stmt.getAsObject());
+    }
+    return results;
+  } finally {
+    stmt.free();
   }
-  stmt.free();
-  return results;
 }
 
 function queryOne(sql, params = []) {
@@ -188,6 +196,18 @@ function enrichNota(nota) {
   const abonos = queryAll('SELECT * FROM abonos WHERE notaId = ? ORDER BY fecha ASC', [nota.id]);
   const imagenes = queryAll('SELECT imagenData FROM imagenes_referencia WHERE notaId = ? ORDER BY ordenIndex ASC', [nota.id]);
 
+  let asignadoArreglo = [];
+  if (nota.asignadoA) {
+    try {
+      asignadoArreglo = JSON.parse(nota.asignadoA);
+      if (!Array.isArray(asignadoArreglo)) {
+        asignadoArreglo = [nota.asignadoA]; // Fallback for pure strings mimicking JSON
+      }
+    } catch {
+      asignadoArreglo = [nota.asignadoA]; // Fallback for old legacy string data
+    }
+  }
+
   return {
     ...nota,
     terminada: !!nota.terminada,
@@ -195,6 +215,8 @@ function enrichNota(nota) {
     entregada: !!nota.entregada,
     viaWhatsapp: !!nota.viaWhatsapp,
     eliminada: !!nota.eliminada,
+    urgente: !!nota.urgente,
+    asignadoA: asignadoArreglo,
     items: items,
     abonos: abonos,
     imagenesReferencia: imagenes.map(i => i.imagenData),
@@ -218,14 +240,16 @@ function createNota(data) {
   const now = new Date().toISOString();
 
   db.run(`
-    INSERT INTO notas (id, numeroNota, fecha, clienteNombre, clienteTelefono, fechaEvento, fechaEntrega, total, terminada, pagada, entregada, asignadoA, viaWhatsapp, eliminada, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO notas (id, numeroNota, fecha, clienteNombre, clienteTelefono, fechaEvento, fechaEntrega, total, terminada, pagada, entregada, asignadoA, urgente, viaWhatsapp, eliminada, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     id, numeroNota, data.fecha, data.clienteNombre,
     data.clienteTelefono || '', data.fechaEvento || '', data.fechaEntrega || '',
     data.total || 0,
     data.terminada ? 1 : 0, data.pagada ? 1 : 0, data.entregada ? 1 : 0,
-    data.asignadoA || null, data.viaWhatsapp ? 1 : 0, 0,
+    data.asignadoA && Array.isArray(data.asignadoA) && data.asignadoA.length > 0 ? JSON.stringify(data.asignadoA) : null,
+    data.urgente ? 1 : 0,
+    data.viaWhatsapp ? 1 : 0, 0,
     now, now
   ]);
 
@@ -275,11 +299,16 @@ function updateNota(id, updates) {
   const now = new Date().toISOString();
 
   // Campos simples
-  const simpleFields = ['fecha', 'clienteNombre', 'clienteTelefono', 'fechaEvento', 'fechaEntrega', 'total', 'asignadoA'];
-  const boolFields = ['terminada', 'pagada', 'entregada', 'viaWhatsapp', 'eliminada'];
+  const simpleFields = ['fecha', 'clienteNombre', 'clienteTelefono', 'fechaEvento', 'fechaEntrega', 'total'];
+  const boolFields = ['terminada', 'pagada', 'entregada', 'urgente', 'viaWhatsapp', 'eliminada'];
 
   const setClauses = ['updatedAt = ?'];
   const values = [now];
+
+  if (updates.asignadoA !== undefined) {
+    setClauses.push('asignadoA = ?');
+    values.push(updates.asignadoA && Array.isArray(updates.asignadoA) && updates.asignadoA.length > 0 ? JSON.stringify(updates.asignadoA) : null);
+  }
 
   for (const field of simpleFields) {
     if (updates[field] !== undefined) {
@@ -367,7 +396,22 @@ function updateDisenador(oldNombre, newNombre) {
   if (!existing) return false;
   
   db.run('UPDATE disenadores SET nombre = ? WHERE nombre = ?', [newNombre, oldNombre]);
-  db.run('UPDATE notas SET asignadoA = ? WHERE asignadoA = ?', [newNombre, oldNombre]);
+  
+  // Custom update for JSON array of asignadoA
+  const affectedNotes = queryAll(`SELECT id, asignadoA FROM notas WHERE asignadoA LIKE '%' || ? || '%'`, [oldNombre]);
+  affectedNotes.forEach(nota => {
+    try {
+      let arr = JSON.parse(nota.asignadoA);
+      if (!Array.isArray(arr)) arr = [nota.asignadoA];
+      const updatedArr = arr.map(e => e === oldNombre ? newNombre : e);
+      db.run('UPDATE notas SET asignadoA = ? WHERE id = ?', [JSON.stringify(updatedArr), nota.id]);
+    } catch {
+      if (nota.asignadoA === oldNombre) {
+        db.run('UPDATE notas SET asignadoA = ? WHERE id = ?', [JSON.stringify([newNombre]), nota.id]);
+      }
+    }
+  });
+
   saveDatabase();
   return true;
 }
@@ -380,6 +424,26 @@ function deleteDisenador(nombre) {
   if (!existing) return false;
   
   db.run('DELETE FROM disenadores WHERE nombre = ?', [nombre]);
+
+  // Remove designer from arrays
+  const affectedNotes = queryAll(`SELECT id, asignadoA FROM notas WHERE asignadoA LIKE '%' || ? || '%'`, [nombre]);
+  affectedNotes.forEach(nota => {
+    try {
+      let arr = JSON.parse(nota.asignadoA);
+      if (!Array.isArray(arr)) arr = [nota.asignadoA];
+      const updatedArr = arr.filter(e => e !== nombre);
+      if (updatedArr.length === 0) {
+        db.run('UPDATE notas SET asignadoA = NULL WHERE id = ?', [nota.id]);
+      } else {
+        db.run('UPDATE notas SET asignadoA = ? WHERE id = ?', [JSON.stringify(updatedArr), nota.id]);
+      }
+    } catch {
+      if (nota.asignadoA === nombre) {
+        db.run('UPDATE notas SET asignadoA = NULL WHERE id = ?', [nota.id]);
+      }
+    }
+  });
+
   saveDatabase();
   return true;
 }

@@ -37,6 +37,8 @@ export function NotasListPage() {
   const [notaToDelete, setNotaToDelete] = useState<string | null>(null);
   const [notaToUpdateEstado, setNotaToUpdateEstado] = useState<Nota | null>(null);
   const [notaToUpdateAbonos, setNotaToUpdateAbonos] = useState<Nota | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 30;
   const { onNotaCreated, onNotaUpdated } = useSocket();
 
   useEffect(() => {
@@ -60,7 +62,14 @@ export function NotasListPage() {
       );
     });
     setFilteredNotas(filtered);
+    setCurrentPage(1); // Reset to first page on search
   }, [searchTerm, notas]);
+
+  const totalPages = Math.ceil(filteredNotas.length / ITEMS_PER_PAGE);
+  const paginatedNotas = filteredNotas.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const cargarNotas = async () => {
     try {
@@ -196,7 +205,7 @@ export function NotasListPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredNotas.map((nota) => (
+                  {paginatedNotas.map((nota) => (
                     <TableRow key={nota.id} className="hover:bg-[#fffb89]">
                       <TableCell className="font-semibold text-[#ff7908]">
                         {nota.numeroNota}
@@ -275,8 +284,60 @@ export function NotasListPage() {
             </div>
           )}
 
-          <div className="mt-4 text-sm text-gray-600">
-            Total de notas: {filteredNotas.length}
+          <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-sm text-gray-600">
+              Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} a {Math.min(currentPage * ITEMS_PER_PAGE, filteredNotas.length)} de {filteredNotas.length} notas
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex flex-wrap items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Anterior
+                </Button>
+
+                {/* Custom page buttons */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+                  // Only show current, first, last, and immediate neighbors
+                  if (
+                    pageNum === 1 ||
+                    pageNum === totalPages ||
+                    (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                  ) {
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        className={currentPage === pageNum ? "bg-[#ff7908] hover:bg-[#ffac08] text-white" : ""}
+                        onClick={() => setCurrentPage(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  } else if (
+                    pageNum === currentPage - 2 ||
+                    pageNum === currentPage + 2
+                  ) {
+                    return <span key={pageNum} className="px-2 text-gray-400">...</span>;
+                  }
+                  return null;
+                })}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>

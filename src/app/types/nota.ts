@@ -29,7 +29,8 @@ export interface Nota {
   terminada: boolean;
   pagada: boolean;
   entregada: boolean;
-  asignadoA: string | null;
+  asignadoA: string[];
+  urgente: boolean;
   viaWhatsapp: boolean;
   imagenesReferencia: string[];
   abonos: Abono[];
