@@ -143,6 +143,20 @@ app.delete('/api/disenadores/:nombre', (req, res) => {
   }
 });
 
+// ========== ITEMS ==========
+
+app.patch('/api/items/:itemId', (req, res) => {
+  try {
+    const success = database.updateItem(req.params.itemId, req.body);
+    if (!success) return res.status(400).json({ error: 'Error al actualizar item' });
+    io.emit('nota:updated', {});
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error al actualizar item:', err);
+    res.status(500).json({ error: 'Error al actualizar item' });
+  }
+});
+
 // ========== WEBSOCKET ==========
 
 io.on('connection', (socket) => {
@@ -155,6 +169,18 @@ io.on('connection', (socket) => {
 // ========== INICIAR ==========
 
 const PORT = process.env.PORT || 3001;
+
+// ========== REPORTE CAJA ==========
+
+app.get('/api/caja', (req, res) => {
+  try {
+    const reporte = database.getReporteCaja();
+    res.json(reporte);
+  } catch (err) {
+    console.error('Error al obtener reporte de caja:', err);
+    res.status(500).json({ error: 'Error al obtener reporte de caja' });
+  }
+});
 
 async function start() {
   await database.initDatabase();

@@ -9,6 +9,15 @@ import { NotaHeader } from "../components/NotaHeader";
 import { NotaStatusBadges } from "../components/NotaStatusBadges";
 import { EstadoNotaDialog } from "../components/EstadoNotaDialog";
 import { AbonosDialog } from "../components/AbonosDialog";
+import { ObjetosDialog } from "../components/ObjetosDialog";
+import { Label } from "../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import {
   Table,
   TableBody,
@@ -27,16 +36,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
-import { Plus, Eye, Pencil, Trash2, Search, ListChecks, Users, DollarSign } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Search, ListChecks, Users, DollarSign, CalendarDays, Package, Filter, X, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 export function NotasListPage() {
   const [notas, setNotas] = useState<Nota[]>([]);
   const [filteredNotas, setFilteredNotas] = useState<Nota[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterDateType, setFilterDateType] = useState<"creacion" | "evento" | "entrega">("creacion");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
   const [notaToDelete, setNotaToDelete] = useState<string | null>(null);
   const [notaToUpdateEstado, setNotaToUpdateEstado] = useState<Nota | null>(null);
   const [notaToUpdateAbonos, setNotaToUpdateAbonos] = useState<Nota | null>(null);
+  const [notaToUpdateObjetos, setNotaToUpdateObjetos] = useState<Nota | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 30;
   const { onNotaCreated, onNotaUpdated } = useSocket();
@@ -54,16 +67,29 @@ export function NotasListPage() {
 
   useEffect(() => {
     const filtered = notas.filter((nota) => {
+      // Búsqueda por texto
       const search = searchTerm.toLowerCase();
-      return (
+      const matchesSearch =
         nota.numeroNota.toLowerCase().includes(search) ||
         nota.clienteNombre.toLowerCase().includes(search) ||
-        nota.clienteTelefono.includes(search)
-      );
+        nota.clienteTelefono.includes(search);
+
+      if (!matchesSearch) return false;
+
+      // Filtro por fecha
+      let fechaTarget = "";
+      if (filterDateType === "creacion") fechaTarget = nota.fecha.substring(0, 10);
+      else if (filterDateType === "evento") fechaTarget = nota.fechaEvento || "";
+      else if (filterDateType === "entrega") fechaTarget = nota.fechaEntrega || "";
+
+      if (filterStartDate && fechaTarget < filterStartDate) return false;
+      if (filterEndDate && fechaTarget > filterEndDate) return false;
+
+      return true;
     });
     setFilteredNotas(filtered);
     setCurrentPage(1); // Reset to first page on search
-  }, [searchTerm, notas]);
+  }, [searchTerm, notas, filterStartDate, filterEndDate, filterDateType]);
 
   const totalPages = Math.ceil(filteredNotas.length / ITEMS_PER_PAGE);
   const paginatedNotas = filteredNotas.slice(
@@ -110,9 +136,21 @@ export function NotasListPage() {
 
   const handleUpdateAbonos = async (abonos: any) => {
     if (!notaToUpdateAbonos) return;
+
+    // Auto sync note payment status
+    const totalAbonado = abonos.reduce((s: number, a: any) => s + (a.monto || 0), 0);
+    const isPagada = totalAbonado >= notaToUpdateAbonos.total;
+
     try {
-      await notasApi.patch(notaToUpdateAbonos.id, { abonos });
-      toast.success("Abonos actualizados correctamente");
+      await notasApi.patch(notaToUpdateAbonos.id, {
+        abonos,
+        pagada: isPagada
+      });
+      if (isPagada && !notaToUpdateAbonos.pagada) {
+        toast.success("¡Liquidada! La nota se ha marcado como pagada automáticamente");
+      } else {
+        toast.success("Abonos actualizados correctamente");
+      }
       cargarNotas();
     } catch (err) {
       toast.error("Error al actualizar los abonos");
@@ -141,16 +179,22 @@ export function NotasListPage() {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-3xl font-bold text-[#ff7908]">Gestión de Notas</h2>
             <div className="flex gap-2">
-              <Link to="/whatsapp">
-                <Button variant="outline" className="border-green-500 text-green-700 hover:bg-green-50">
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Pedido WhatsApp
-                </Button>
-              </Link>
               <Link to="/disenadores">
                 <Button variant="outline" className="border-[#ff7908] text-[#ff7908]">
                   <Users className="w-4 h-4 mr-2" />
                   Diseñadores
+                </Button>
+              </Link>
+              <Link to="/calendario">
+                <Button variant="outline" className="border-purple-500 text-purple-700 hover:bg-purple-50">
+                  <CalendarDays className="w-4 h-4 mr-2" />
+                  Calendario
+                </Button>
+              </Link>
+              <Link to="/caja">
+                <Button variant="outline" className="border-emerald-500 text-emerald-700 hover:bg-emerald-50">
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Caja
                 </Button>
               </Link>
               <Link to="/crear">
@@ -162,6 +206,54 @@ export function NotasListPage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-orange-50 rounded-lg border border-orange-100">
+            <div>
+              <Label className="text-[#ff7908] mb-1.5 block">Filtrar por tipo de fecha:</Label>
+              <Select value={filterDateType} onValueChange={(v: any) => setFilterDateType(v)}>
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Tipo de fecha" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="creacion">Fecha de Creación</SelectItem>
+                  <SelectItem value="evento">Fecha de Evento</SelectItem>
+                  <SelectItem value="entrega">Fecha de Entrega</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-[#ff7908] mb-1.5 block">Desde:</Label>
+              <Input
+                type="date"
+                value={filterStartDate}
+                onChange={(e) => setFilterStartDate(e.target.value)}
+                className="bg-white"
+              />
+            </div>
+            <div>
+              <Label className="text-[#ff7908] mb-1.5 block">Hasta:</Label>
+              <Input
+                type="date"
+                value={filterEndDate}
+                onChange={(e) => setFilterEndDate(e.target.value)}
+                className="bg-white"
+              />
+            </div>
+            <div className="flex items-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setFilterStartDate("");
+                  setFilterEndDate("");
+                  setSearchTerm("");
+                }}
+                className="flex-1 border-gray-300"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Limpiar
+              </Button>
+            </div>
+          </div>
+
           <div className="mb-6">
             <div className="relative">
               <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
@@ -170,7 +262,7 @@ export function NotasListPage() {
                 placeholder="Buscar por número, cliente o teléfono..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 h-11"
               />
             </div>
           </div>
@@ -254,8 +346,18 @@ export function NotasListPage() {
                             size="sm"
                             onClick={() => setNotaToUpdateEstado(nota)}
                             className="text-orange-600 hover:text-orange-800 hover:bg-orange-50"
+                            title="Actualizar estado"
                           >
                             <ListChecks className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setNotaToUpdateObjetos(nota)}
+                            className="text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                            title="Gestionar productos y entregas parciales"
+                          >
+                            <Package className="w-4 h-4" />
                           </Button>
                           <Link to={`/ver/${nota.id}`}>
                             <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 hover:bg-blue-50">
@@ -380,6 +482,16 @@ export function NotasListPage() {
           open={!!notaToUpdateAbonos}
           onOpenChange={(open) => !open && setNotaToUpdateAbonos(null)}
           onUpdate={handleUpdateAbonos}
+        />
+      )}
+
+      {/* Diálogo de productos */}
+      {notaToUpdateObjetos && (
+        <ObjetosDialog
+          nota={notaToUpdateObjetos}
+          open={!!notaToUpdateObjetos}
+          onOpenChange={(open) => !open && setNotaToUpdateObjetos(null)}
+          onUpdate={cargarNotas}
         />
       )}
     </div>

@@ -4,6 +4,8 @@ export interface ItemNota {
   descripcion: string;
   precioUnitario: number;
   importe: number;
+  terminado?: boolean;
+  entregado?: boolean;
 }
 
 export interface Abono {
@@ -21,6 +23,7 @@ export interface Nota {
   clienteTelefono: string;
   fechaEvento?: string;
   fechaEntrega?: string;
+  comentarios?: string;
   items: ItemNota[];
   total: number;
   createdAt: string;
@@ -30,6 +33,7 @@ export interface Nota {
   pagada: boolean;
   entregada: boolean;
   asignadoA: string[];
+  disenadoresTerminados: string[];
   urgente: boolean;
   viaWhatsapp: boolean;
   imagenesReferencia: string[];

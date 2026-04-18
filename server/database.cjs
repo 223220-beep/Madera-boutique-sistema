@@ -151,6 +151,19 @@ async function initDatabase() {
     db.run('ALTER TABLE notas ADD COLUMN urgente INTEGER DEFAULT 0');
   } catch (e) {
   }
+  try {
+    db.run('ALTER TABLE items_nota ADD COLUMN terminado INTEGER DEFAULT 0');
+    db.run('ALTER TABLE items_nota ADD COLUMN entregado INTEGER DEFAULT 0');
+  } catch (e) {
+  }
+  try {
+    db.run('ALTER TABLE notas ADD COLUMN disenadoresTerminados TEXT DEFAULT "[]"');
+  } catch (e) {
+  }
+  try {
+    db.run('ALTER TABLE notas ADD COLUMN comentarios TEXT DEFAULT ""');
+  } catch (e) {
+  }
 
   saveDatabase();
   console.log('✅ Tablas de base de datos inicializadas');
@@ -208,6 +221,16 @@ function enrichNota(nota) {
     }
   }
 
+  let disenadoresTerminados = [];
+  if (nota.disenadoresTerminados) {
+    try {
+      disenadoresTerminados = JSON.parse(nota.disenadoresTerminados);
+      if (!Array.isArray(disenadoresTerminados)) disenadoresTerminados = [];
+    } catch {
+      disenadoresTerminados = [];
+    }
+  }
+
   return {
     ...nota,
     terminada: !!nota.terminada,
@@ -217,7 +240,8 @@ function enrichNota(nota) {
     eliminada: !!nota.eliminada,
     urgente: !!nota.urgente,
     asignadoA: asignadoArreglo,
-    items: items,
+    disenadoresTerminados: disenadoresTerminados,
+    items: items.map(i => ({ ...i, terminado: !!i.terminado, entregado: !!i.entregado })),
     abonos: abonos,
     imagenesReferencia: imagenes.map(i => i.imagenData),
   };
@@ -240,12 +264,12 @@ function createNota(data) {
   const now = new Date().toISOString();
 
   db.run(`
-    INSERT INTO notas (id, numeroNota, fecha, clienteNombre, clienteTelefono, fechaEvento, fechaEntrega, total, terminada, pagada, entregada, asignadoA, urgente, viaWhatsapp, eliminada, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO notas (id, numeroNota, fecha, clienteNombre, clienteTelefono, fechaEvento, fechaEntrega, total, comentarios, terminada, pagada, entregada, asignadoA, urgente, viaWhatsapp, eliminada, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     id, numeroNota, data.fecha, data.clienteNombre,
     data.clienteTelefono || '', data.fechaEvento || '', data.fechaEntrega || '',
-    data.total || 0,
+    data.total || 0, data.comentarios || '',
     data.terminada ? 1 : 0, data.pagada ? 1 : 0, data.entregada ? 1 : 0,
     data.asignadoA && Array.isArray(data.asignadoA) && data.asignadoA.length > 0 ? JSON.stringify(data.asignadoA) : null,
     data.urgente ? 1 : 0,
@@ -299,7 +323,7 @@ function updateNota(id, updates) {
   const now = new Date().toISOString();
 
   // Campos simples
-  const simpleFields = ['fecha', 'clienteNombre', 'clienteTelefono', 'fechaEvento', 'fechaEntrega', 'total'];
+  const simpleFields = ['fecha', 'clienteNombre', 'clienteTelefono', 'fechaEvento', 'fechaEntrega', 'total', 'comentarios'];
   const boolFields = ['terminada', 'pagada', 'entregada', 'urgente', 'viaWhatsapp', 'eliminada'];
 
   const setClauses = ['updatedAt = ?'];
@@ -308,6 +332,11 @@ function updateNota(id, updates) {
   if (updates.asignadoA !== undefined) {
     setClauses.push('asignadoA = ?');
     values.push(updates.asignadoA && Array.isArray(updates.asignadoA) && updates.asignadoA.length > 0 ? JSON.stringify(updates.asignadoA) : null);
+  }
+
+  if (updates.disenadoresTerminados !== undefined) {
+    setClauses.push('disenadoresTerminados = ?');
+    values.push(updates.disenadoresTerminados && Array.isArray(updates.disenadoresTerminados) ? JSON.stringify(updates.disenadoresTerminados) : "[]");
   }
 
   for (const field of simpleFields) {
@@ -326,6 +355,23 @@ function updateNota(id, updates) {
 
   values.push(id);
   db.run(`UPDATE notas SET ${setClauses.join(', ')} WHERE id = ?`, values);
+
+  // Automatización: Si la nota está marcada como pagada pero tiene saldo pendiente, liquidar
+  // Omitimos esto si el usuario ya está proporcionando los abonos manualmente en el mismo update
+  const notaFinal = queryOne('SELECT pagada, total FROM notas WHERE id = ?', [id]);
+  if (notaFinal && notaFinal.pagada && updates.abonos === undefined) {
+    const currentAbonos = queryAll('SELECT monto FROM abonos WHERE notaId = ?', [id]);
+    const totalAbonado = currentAbonos.reduce((sum, a) => sum + (Number(a.monto) || 0), 0);
+    const totalActual = Number(notaFinal.total);
+    
+    if (totalActual > (totalAbonado + 0.01)) {
+      const restante = totalActual - totalAbonado;
+      db.run(`
+        INSERT INTO abonos (id, notaId, fecha, monto, nota)
+        VALUES (?, ?, ?, ?, ?)
+      `, [crypto.randomUUID(), id, now, restante, 'Liquidación (Automática)']);
+    }
+  }
 
   // Actualizar items si se proporcionan
   if (updates.items !== undefined) {
@@ -373,6 +419,19 @@ function updateNota(id, updates) {
 
   saveDatabase();
   return getNotaById(id);
+}
+
+function getReporteCaja() {
+  const sql = `
+    SELECT 
+      a.*, 
+      n.numeroNota, 
+      n.clienteNombre 
+    FROM abonos a
+    JOIN notas n ON a.notaId = n.id
+    ORDER BY a.fecha DESC
+  `;
+  return queryAll(sql);
 }
 
 // ========== FUNCIONES DE DISEÑADORES ==========
@@ -448,14 +507,37 @@ function deleteDisenador(nombre) {
   return true;
 }
 
+function updateItem(itemId, updates) {
+  const setClauses = [];
+  const values = [];
+
+  if (updates.terminado !== undefined) {
+    setClauses.push('terminado = ?');
+    values.push(updates.terminado ? 1 : 0);
+  }
+  if (updates.entregado !== undefined) {
+    setClauses.push('entregado = ?');
+    values.push(updates.entregado ? 1 : 0);
+  }
+
+  if (setClauses.length === 0) return false;
+
+  values.push(itemId);
+  db.run(`UPDATE items_nota SET ${setClauses.join(', ')} WHERE id = ?`, values);
+  saveDatabase();
+  return true;
+}
+
 module.exports = {
   initDatabase,
   getAllNotas,
   getNotaById,
   createNota,
   updateNota,
+  updateItem,
   getDisenadores,
   addDisenador,
   updateDisenador,
   deleteDisenador,
+  getReporteCaja,
 };

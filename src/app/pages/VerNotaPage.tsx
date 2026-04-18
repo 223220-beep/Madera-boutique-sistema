@@ -4,7 +4,7 @@ import { notasApi } from "../utils/api";
 import { Nota } from "../types/nota";
 import { Button } from "../components/ui/button";
 import { NotaStatusBadges } from "../components/NotaStatusBadges";
-import { ArrowLeft, Printer, Pencil, Phone, MapPin, Clock, Mail, Download } from "lucide-react";
+import { ArrowLeft, Printer, Pencil, Phone, MapPin, Clock, Mail, Download, AlertCircle } from "lucide-react";
 import * as htmlToImage from "html-to-image";
 import { toast } from "sonner";
 import { MaderaLogo } from "../components/MaderaLogo";
@@ -106,15 +106,15 @@ export function VerNotaPage() {
         {/* Nota para imprimir/descargar */}
         <div id="nota-para-imprimir" className="bg-white border-4 border-[#ffac08] rounded-lg p-8 print:border-2">
           {/* Header */}
-          <div className="flex items-start justify-between mb-6 pb-4 border-b-2 border-[#ffac08]">
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 bg-gradient-to-br from-[#ff7908] to-[#ffac08] rounded-lg flex items-center justify-center p-2">
+          <div className="flex items-start justify-between mb-8 pb-6 border-b-2 border-[#ffac08]">
+            <div className="flex items-center gap-8">
+              <div className="w-36 h-36 bg-gradient-to-br from-[#ff7908] to-[#ffac08] rounded-lg flex items-center justify-center p-2">
                 <MaderaLogo className="w-full h-full text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-[#ff7908] tracking-wider">MADERA</h1>
-                <h2 className="text-xl font-bold text-[#ff7908] tracking-widest">BOUTIQUE</h2>
-                <p className="text-xs text-[#ffac08] mt-1">DETALLES EXCLUSIVOS Y CORTE LÁSER</p>
+                <h1 className="text-6xl font-extrabold text-[#ff7908] tracking-[0.1em]">MADERA</h1>
+                <h2 className="text-5xl font-bold text-[#ff7908] tracking-[0.2em] mt-1">BOUTIQUE</h2>
+                <p className="text-base font-semibold text-[#ffac08] mt-3">DETALLES EXCLUSIVOS Y CORTE LÁSER</p>
               </div>
             </div>
 
@@ -165,14 +165,21 @@ export function VerNotaPage() {
               <Clock className="w-4 h-4 mt-0.5" />
               <div>
                 <p className="font-semibold mb-1">Lunes a Viernes:</p>
-                <p className="text-xs">10 a 20 h.</p>
+                <p className="text-xs">9:00 AM a 8:00 PM</p>
               </div>
             </div>
             <div className="flex-1 flex items-start gap-2">
               <Clock className="w-4 h-4 mt-0.5" />
               <div>
                 <p className="font-semibold mb-1">Sábados</p>
-                <p className="text-xs">10 a 15:00 h.</p>
+                <p className="text-xs">9:00 AM a 3:00 PM</p>
+              </div>
+            </div>
+            <div className="flex-1 flex items-start gap-2 border-l border-[#ffac08] pl-4">
+              <AlertCircle className="w-4 h-4 mt-0.5" />
+              <div>
+                <p className="font-bold mb-1">Horario corrido</p>
+                <p className="text-xs text-black">Todas las entregas son después de las 5:00 PM</p>
               </div>
             </div>
           </div>
@@ -231,7 +238,7 @@ export function VerNotaPage() {
           {/* Imágenes de Referencia */}
           {nota.imagenesReferencia && nota.imagenesReferencia.length > 0 && (
             <div className="mb-6">
-              <h3 className="text-[#ff7908] font-bold mb-3 text-center">IMÁGENES DE REFERENCIA</h3>
+              <h3 className="text-[#ff7908] font-bold mb-3 text-center uppercase text-sm">Imágenes de Referencia</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {nota.imagenesReferencia.map((imagen, index) => (
                   <img
@@ -242,6 +249,14 @@ export function VerNotaPage() {
                   />
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Comentarios Adicionales */}
+          {nota.comentarios && (
+            <div className="mb-6 bg-gray-50 p-4 border-2 border-dashed border-[#ffac08] rounded-lg">
+              <h3 className="text-[#ff7908] font-bold mb-2 uppercase text-sm">Pedido Específico / Comentarios:</h3>
+              <p className="text-black whitespace-pre-wrap">{nota.comentarios}</p>
             </div>
           )}
 
@@ -291,7 +306,7 @@ export function VerNotaPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div >
 
       <style>{`
         @media print {
@@ -307,6 +322,6 @@ export function VerNotaPage() {
           }
         }
       `}</style>
-    </div>
+    </div >
   );
 }

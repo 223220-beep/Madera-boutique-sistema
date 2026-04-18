@@ -4,7 +4,8 @@ import { CrearNotaPage } from "./pages/CrearNotaPage";
 import { EditarNotaPage } from "./pages/EditarNotaPage";
 import { VerNotaPage } from "./pages/VerNotaPage";
 import { DisenadoresPage } from "./pages/DisenadoresPage";
-import { WhatsAppPage } from "./pages/WhatsAppPage";
+import { CalendarioPage } from "./pages/CalendarioPage";
+import { CajaPage } from "./pages/CajaPage";
 import { Layout } from "./components/Layout";
 import { ErrorPage } from "./components/ErrorPage";
 
@@ -19,7 +20,8 @@ export const router = createBrowserRouter([
       { path: "editar/:id", Component: EditarNotaPage },
       { path: "ver/:id", Component: VerNotaPage },
       { path: "disenadores", Component: DisenadoresPage },
-      { path: "whatsapp", Component: WhatsAppPage },
+      { path: "calendario", Component: CalendarioPage },
+      { path: "caja", Component: CajaPage },
     ],
   },
 ]);

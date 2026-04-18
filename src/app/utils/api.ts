@@ -92,3 +92,15 @@ export const disenadoresApi = {
             method: 'DELETE',
         }),
 };
+
+export const itemsApi = {
+    patch: (itemId: string, updates: Record<string, unknown>) =>
+        request(`/api/items/${itemId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(updates),
+        }),
+};
+
+export const cajaApi = {
+    getReport: (): Promise<any[]> => request('/api/caja'),
+};

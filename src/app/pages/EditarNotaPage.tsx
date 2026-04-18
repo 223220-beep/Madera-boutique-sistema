@@ -63,6 +63,8 @@ export function EditarNotaPage() {
               fechaEntrega: nota.fechaEntrega,
               items: nota.items,
               imagenesReferencia: nota.imagenesReferencia,
+              viaWhatsapp: nota.viaWhatsapp,
+              comentarios: nota.comentarios,
             }}
             onSubmit={handleSubmit}
             onCancel={() => navigate("/")}

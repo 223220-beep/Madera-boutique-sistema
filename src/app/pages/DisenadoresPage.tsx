@@ -23,9 +23,9 @@ import {
 } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
-import { CheckCircle2, Eye, Flame, UserMinus, UserPlus } from "lucide-react";
+import { Input } from "../components/ui/input";
+import { Check, CheckCircle2, Eye, Flame, UserMinus, UserPlus, Settings, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Settings } from "lucide-react";
 import { GestionDisenadoresDialog } from "../components/GestionDisenadoresDialog";
 
 export function DisenadoresPage() {
@@ -34,6 +34,9 @@ export function DisenadoresPage() {
   const [notasEnProceso, setNotasEnProceso] = useState<Nota[]>([]);
   const [notasTerminadas, setNotasTerminadas] = useState<Nota[]>([]);
   const [selectedDisenador, setSelectedDisenador] = useState<string>("");
+  const [filterDateType, setFilterDateType] = useState<"creacion" | "entrega">("creacion");
+  const [filterStartDate, setFilterStartDate] = useState<string>("");
+  const [filterEndDate, setFilterEndDate] = useState<string>("");
   const [disenadores, setDisenadores] = useState<string[]>([]);
   const [showGestionDialog, setShowGestionDialog] = useState(false);
   const { onNotaCreated, onNotaUpdated, onDisenadoresUpdated } = useSocket();
@@ -53,7 +56,7 @@ export function DisenadoresPage() {
 
   useEffect(() => {
     filtrarNotas();
-  }, [notas, selectedDisenador]);
+  }, [notas, selectedDisenador, filterStartDate, filterEndDate, filterDateType]);
 
   const cargarNotas = async () => {
     try {
@@ -82,12 +85,39 @@ export function DisenadoresPage() {
       notasFiltradas = notasFiltradas.filter((nota) => nota.asignadoA && nota.asignadoA.includes(selectedDisenador));
     }
 
+    if (filterStartDate) {
+      notasFiltradas = notasFiltradas.filter(n => {
+        const d = filterDateType === "creacion" ? n.fecha.substring(0, 10) : (n.fechaEntrega || "");
+        return d && d >= filterStartDate;
+      });
+    }
+
+    if (filterEndDate) {
+      notasFiltradas = notasFiltradas.filter(n => {
+        const d = filterDateType === "creacion" ? n.fecha.substring(0, 10) : (n.fechaEntrega || "");
+        return d && d <= filterEndDate;
+      });
+    }
+
+    const sortFunction = (a: Nota, b: Nota) => {
+      // 1. Prioridad Máxima: Urgente
+      if (a.urgente !== b.urgente) return b.urgente ? 1 : -1;
+
+      // 2. Prioridad Secundaria: Fecha de entrega más cercana primero
+      const dateA = a.fechaEntrega || "9999-12-31";
+      const dateB = b.fechaEntrega || "9999-12-31";
+      if (dateA !== dateB) return dateA < dateB ? -1 : 1;
+
+      // 3. Fallback: Fecha de creación (más antiguo primero)
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    };
+
     // Notas pendientes SIEMPRE son las que no tienen asignación (ignorando el filtro de diseñador)
-    setNotasPendientes(notas.filter((n) => !n.asignadoA || n.asignadoA.length === 0).sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)));
+    setNotasPendientes(notas.filter((n) => (!n.asignadoA || n.asignadoA.length === 0) && !n.terminada).sort(sortFunction));
 
     // Las demás notas sí respetan el filtro
-    setNotasEnProceso(notasFiltradas.filter((n) => n.asignadoA && n.asignadoA.length > 0 && !n.terminada).sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)));
-    setNotasTerminadas(notasFiltradas.filter((n) => n.terminada));
+    setNotasEnProceso(notasFiltradas.filter((n) => n.asignadoA && n.asignadoA.length > 0 && !n.terminada).sort(sortFunction));
+    setNotasTerminadas(notasFiltradas.filter((n) => n.terminada && n.asignadoA && n.asignadoA.length > 0));
   };
 
   const toggleUrgencia = async (notaId: string, actual: boolean) => {
@@ -102,8 +132,8 @@ export function DisenadoresPage() {
 
   const desasignarDisenador = async (notaId: string) => {
     try {
-      await notasApi.patch(notaId, { asignadoA: [] });
-      toast.success("Nota devuelta a pendientes");
+      await notasApi.patch(notaId, { asignadoA: [], disenadoresTerminados: [] });
+      toast.success("Nota quitada de la vista de diseñadores");
       cargarNotas();
     } catch (err) {
       toast.error("Error al desasignar");
@@ -131,6 +161,21 @@ export function DisenadoresPage() {
     }
   };
 
+  const toggleDesignerTermino = async (nota: Nota, disenador: string) => {
+    const actuales = nota.disenadoresTerminados || [];
+    const terminados = actuales.includes(disenador)
+      ? actuales.filter(d => d !== disenador)
+      : [...actuales, disenador];
+
+    try {
+      await notasApi.patch(nota.id, { disenadoresTerminados: terminados });
+      toast.success(actuales.includes(disenador) ? "Progreso revertido" : "¡Parte del diseño marcada como lista!");
+      cargarNotas();
+    } catch {
+      toast.error("Error al actualizar progreso");
+    }
+  };
+
   const marcarComoTerminada = async (notaId: string) => {
     try {
       await notasApi.patch(notaId, { terminada: true });
@@ -143,7 +188,9 @@ export function DisenadoresPage() {
   };
 
   const formatearFecha = (fechaISO: string) => {
+    if (!fechaISO) return "Sin fecha";
     const date = new Date(fechaISO + "T00:00:00");
+    if (isNaN(date.getTime())) return "Sin fecha";
     return date.toLocaleDateString("es-MX", {
       year: "numeric",
       month: "short",
@@ -181,20 +228,40 @@ export function DisenadoresPage() {
           </div>
           {nota.asignadoA && nota.asignadoA.length > 0 && (
             <div className="flex flex-col gap-1 items-end">
-              {nota.asignadoA.map((d) => (
-                <Badge key={d} variant="outline" className={`text-white ${nota.urgente ? 'bg-red-600 border-red-700' : 'bg-orange-600'}`}>
-                  {d}
-                </Badge>
-              ))}
+              {nota.asignadoA.map((d) => {
+                const finished = (nota.disenadoresTerminados || []).includes(d);
+                return (
+                  <div key={d} className="flex items-center gap-1 justify-end">
+                    <button
+                      onClick={() => toggleDesignerTermino(nota, d)}
+                      className={`rounded-full p-0.5 border ${finished ? 'bg-green-500 border-green-600 text-white' : 'border-gray-300 text-transparent hover:border-orange-400'}`}
+                      title={finished ? "Marcar como no terminado" : "Marcar mi parte como lista"}
+                    >
+                      <Check className="w-3 h-3" strokeWidth={3} />
+                    </button>
+                    <Badge variant="outline" className={`text-white ${finished ? 'bg-green-600 border-green-700' : nota.urgente ? 'bg-red-600 border-red-700' : 'bg-orange-600'}`}>
+                      {d}
+                    </Badge>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="text-sm">
-          <p className="text-gray-600">Fecha: {formatearFecha(nota.fecha)}</p>
-          <p className="text-gray-600">Items: {nota.items.length}</p>
-          <p className="font-semibold text-orange-700">Total: ${nota.total.toFixed(2)}</p>
+        <div className="text-sm flex justify-between">
+          <div>
+            <p className="text-gray-600">Fecha: {formatearFecha(nota.fecha)}</p>
+            <p className="text-gray-600">Objetos: {nota.items.filter(i => i.terminado).length} / {nota.items.length} hechos</p>
+            <p className="font-semibold text-orange-700">Total: ${nota.total.toFixed(2)}</p>
+          </div>
+          {nota.fechaEntrega && (
+            <div className="text-right">
+              <p className="text-xs text-gray-400">Entrega:</p>
+              <p className="font-bold text-purple-700">{formatearFecha(nota.fechaEntrega)}</p>
+            </div>
+          )}
         </div>
 
         <NotaStatusBadges
@@ -218,12 +285,13 @@ export function DisenadoresPage() {
             </Button>
           )}
 
-          {nota.asignadoA && nota.asignadoA.length > 0 && !nota.terminada && (
+          {nota.asignadoA && nota.asignadoA.length > 0 && (
             <Button
               variant="destructive"
               size="sm"
               className="text-xs bg-red-100 text-red-700 hover:bg-red-200"
               onClick={() => desasignarDisenador(nota.id)}
+              title="Quitar de mi vista de Diseñador"
             >
               <UserMinus className="w-4 h-4 mr-1" />
               Quitar
@@ -317,22 +385,51 @@ export function DisenadoresPage() {
             </div>
           </div>
 
-          {/* Filtro por diseñador */}
-          <div className="mb-6">
-            <Label>Filtrar por diseñador:</Label>
-            <Select value={selectedDisenador || "TODOS"} onValueChange={(value) => setSelectedDisenador(value === "TODOS" ? "" : value)}>
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Todos los diseñadores" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TODOS">Todos los diseñadores</SelectItem>
-                {disenadores.map((disenador) => (
-                  <SelectItem key={disenador} value={disenador}>
-                    {disenador}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Filtros */}
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 bg-orange-50 p-4 rounded-lg border border-orange-200">
+            <div>
+              <Label>Filtrar por diseñador:</Label>
+              <Select value={selectedDisenador || "TODOS"} onValueChange={(value) => setSelectedDisenador(value === "TODOS" ? "" : value)}>
+                <SelectTrigger className="mt-1 bg-white">
+                  <SelectValue placeholder="Todos los diseñadores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TODOS">Todos los diseñadores</SelectItem>
+                  {disenadores.map((disenador) => (
+                    <SelectItem key={disenador} value={disenador}>
+                      {disenador}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Tipo de Fecha:</Label>
+              <Select value={filterDateType} onValueChange={(v: "creacion" | "entrega") => setFilterDateType(v)}>
+                <SelectTrigger className="mt-1 bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="creacion">Día de Creación</SelectItem>
+                  <SelectItem value="entrega">Día de Entrega</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Desde:</Label>
+              <Input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="mt-1 bg-white" />
+            </div>
+            <div>
+              <Label>Hasta:</Label>
+              <div className="flex gap-2 items-center mt-1">
+                <Input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bg-white" />
+                {(filterStartDate || filterEndDate) && (
+                  <Button variant="ghost" size="sm" onClick={() => { setFilterStartDate(""); setFilterEndDate(""); }} className="text-gray-500 px-2 border border-gray-300" title="Limpiar fechas">
+                    ✕
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Tabs de notas */}
@@ -374,8 +471,35 @@ export function DisenadoresPage() {
             </TabsContent>
 
             <TabsContent value="terminadas" className="mt-6">
+              <div className="flex justify-between items-end mb-4 border-b border-gray-200 pb-2">
+                <p className="text-gray-500 text-sm">Estas notas ya fueron finalizadas. Quítalas de tu vista cuando termines.</p>
+                {notasTerminadas.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      if (window.confirm("¿Estás seguro de limpiar toda la vista de notas terminadas?\\nEsto desasignará todas las notas en esta pestaña.\\n(Seguirán en la base de datos general)")) {
+                        toast.promise(
+                          Promise.all(notasTerminadas.map((n) => notasApi.patch(n.id, { asignadoA: [], disenadoresTerminados: [] }))),
+                          {
+                            loading: 'Limpiando panel de terminadas...',
+                            success: () => {
+                              cargarNotas();
+                              return '¡Las notas han sido removidas de esta vista!';
+                            },
+                            error: 'Error al limpiar las notas',
+                          }
+                        );
+                      }
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Limpiar todas
+                  </Button>
+                )}
+              </div>
               {notasTerminadas.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">No hay notas terminadas</p>
+                <p className="text-center text-gray-500 py-8">No hay notas terminadas en tu lista</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {notasTerminadas.map((nota) => (

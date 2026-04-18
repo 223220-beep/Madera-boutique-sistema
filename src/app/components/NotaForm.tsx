@@ -3,9 +3,11 @@ import { ItemNota } from "../types/nota";
 import { generateId } from "../utils/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, MessageCircle } from "lucide-react";
 import { ImageUpload } from "./ImageUpload";
+import { Switch } from "./ui/switch";
 
 interface NotaFormProps {
   initialData?: {
@@ -16,6 +18,8 @@ interface NotaFormProps {
     fechaEntrega?: string;
     items: ItemNota[];
     imagenesReferencia?: string[];
+    viaWhatsapp?: boolean;
+    comentarios?: string;
   };
   onSubmit: (data: {
     fecha: string;
@@ -26,6 +30,8 @@ interface NotaFormProps {
     items: ItemNota[];
     total: number;
     imagenesReferencia: string[];
+    viaWhatsapp: boolean;
+    comentarios: string;
   }) => void;
   onCancel: () => void;
   submitLabel?: string;
@@ -38,6 +44,8 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
   const [fechaEvento, setFechaEvento] = useState(initialData?.fechaEvento || "");
   const [fechaEntrega, setFechaEntrega] = useState(initialData?.fechaEntrega || "");
   const [imagenesReferencia, setImagenesReferencia] = useState<string[]>(initialData?.imagenesReferencia || []);
+  const [viaWhatsapp, setViaWhatsapp] = useState(!!initialData?.viaWhatsapp);
+  const [comentarios, setComentarios] = useState(initialData?.comentarios || "");
   const [items, setItems] = useState<ItemNota[]>(
     initialData?.items || [
       {
@@ -107,6 +115,8 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
       items,
       total,
       imagenesReferencia,
+      viaWhatsapp,
+      comentarios,
     });
   };
 
@@ -121,7 +131,20 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
   const fechaFormateada = formatearFecha(fecha);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form
+      onSubmit={handleSubmit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          const target = e.target as HTMLElement;
+          const tag = target.tagName.toLowerCase();
+          // Allow Enter in textareas (for multi-line descriptions) and buttons
+          if (tag !== "button" && tag !== "textarea") {
+            e.preventDefault();
+          }
+        }
+      }}
+      className="space-y-6"
+    >
       {/* Fecha y Número de Nota */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-gradient-to-br from-[#ff7908] to-[#ffac08] text-white p-4 rounded-lg">
@@ -172,9 +195,23 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-[#ff7908] to-[#ffac08] text-white p-4 rounded-lg">
-          <Label className="text-white text-center block mb-2">NOTA NÚMERO</Label>
-          <div className="text-center text-2xl font-bold">AUTO</div>
+        <div className="bg-gradient-to-br from-[#ff7908] to-[#ffac08] text-white p-4 rounded-lg flex flex-col justify-between">
+          <div>
+            <Label className="text-white text-center block mb-2">NOTA NÚMERO</Label>
+            <div className="text-center text-2xl font-bold">AUTO</div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-orange-300 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-4 h-4" />
+              <Label className="text-white cursor-pointer" htmlFor="whatsapp-toggle">Vía WhatsApp</Label>
+            </div>
+            <Switch
+              id="whatsapp-toggle"
+              checked={viaWhatsapp}
+              onCheckedChange={setViaWhatsapp}
+              className="data-[state=checked]:bg-green-500"
+            />
+          </div>
         </div>
       </div>
 
@@ -207,7 +244,7 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
             <div>
               <Label className="text-white">Fecha de Evento:</Label>
               <Input
-                type="text"
+                type="date"
                 value={fechaEvento}
                 onChange={(e) => setFechaEvento(e.target.value)}
                 className="bg-white text-black mt-1"
@@ -216,7 +253,7 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
             <div>
               <Label className="text-white">Fecha de Entrega:</Label>
               <Input
-                type="text"
+                type="date"
                 value={fechaEntrega}
                 onChange={(e) => setFechaEntrega(e.target.value)}
                 className="bg-white text-black mt-1"
@@ -226,15 +263,15 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
         </div>
       </div>
 
-      {/* Imágenes de Referencia */}
-      <div className="bg-gradient-to-br from-[#ff7908] to-[#ffac08] text-white p-4 rounded-lg">
-        <h3 className="text-center font-bold mb-4">IMÁGENES DE REFERENCIA</h3>
-        <div className="space-y-3">
-          <ImageUpload
-            images={imagenesReferencia}
-            onImagesChange={setImagenesReferencia}
-          />
-        </div>
+      {/* Comentarios Extras */}
+      <div className="bg-gradient-to-br from-[#ff7908] to-[#ffac08] text-white p-4 rounded-lg shadow-sm">
+        <h3 className="text-center font-bold mb-4">COMENTARIOS / PEDIDOS ESPECÍFICOS</h3>
+        <Textarea
+          value={comentarios}
+          onChange={(e) => setComentarios(e.target.value)}
+          placeholder="Escribe aquí las especificaciones del cliente..."
+          className="bg-white text-black min-h-[100px] text-lg"
+        />
       </div>
 
       {/* Tabla de Items */}
@@ -261,11 +298,12 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
                 />
               </div>
               <div className="col-span-4">
-                <Input
-                  type="text"
+                <Textarea
                   value={item.descripcion}
                   onChange={(e) => actualizarItem(item.id, "descripcion", e.target.value)}
                   placeholder="Descripción del producto"
+                  rows={2}
+                  className="resize-none min-h-[60px]"
                 />
               </div>
               <div className="col-span-2">
