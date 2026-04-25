@@ -5,6 +5,7 @@ interface NotaStatusBadgesProps {
   terminada: boolean;
   pagada: boolean;
   entregada: boolean;
+  pagaAlRecibir?: boolean;
   viaWhatsapp?: boolean;
   size?: "sm" | "default";
 }
@@ -13,6 +14,7 @@ export function NotaStatusBadges({
   terminada, 
   pagada, 
   entregada, 
+  pagaAlRecibir = false,
   viaWhatsapp = false,
   size = "default" 
 }: NotaStatusBadgesProps) {
@@ -24,6 +26,12 @@ export function NotaStatusBadges({
         <Badge variant="outline" className={`${badgeClass} border-green-500 text-green-700 bg-green-50`}>
           <MessageSquare className="w-3 h-3 mr-1" />
           WhatsApp
+        </Badge>
+      )}
+      {pagaAlRecibir && !pagada && (
+        <Badge variant="outline" className={`${badgeClass} border-amber-600 text-amber-800 bg-amber-50`}>
+          <DollarSign className="w-3 h-3 mr-1" />
+          Paga al Recibir
         </Badge>
       )}
       {terminada && (

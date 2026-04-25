@@ -64,6 +64,7 @@ export function EditarNotaPage() {
               items: nota.items,
               imagenesReferencia: nota.imagenesReferencia,
               viaWhatsapp: nota.viaWhatsapp,
+              pagaAlRecibir: nota.pagaAlRecibir,
               comentarios: nota.comentarios,
             }}
             onSubmit={handleSubmit}

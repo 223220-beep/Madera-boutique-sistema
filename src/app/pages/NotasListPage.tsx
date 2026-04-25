@@ -121,7 +121,7 @@ export function NotasListPage() {
     setNotaToDelete(null);
   };
 
-  const handleUpdateEstado = async (updates: { terminada: boolean; pagada: boolean; entregada: boolean }) => {
+  const handleUpdateEstado = async (updates: { terminada: boolean; pagada: boolean; entregada: boolean; pagaAlRecibir: boolean }) => {
     if (!notaToUpdateEstado) return;
     try {
       await notasApi.patch(notaToUpdateEstado.id, updates);
@@ -310,6 +310,7 @@ export function NotasListPage() {
                           terminada={nota.terminada}
                           pagada={nota.pagada}
                           entregada={nota.entregada}
+                          pagaAlRecibir={nota.pagaAlRecibir}
                           viaWhatsapp={nota.viaWhatsapp}
                           size="sm"
                         />

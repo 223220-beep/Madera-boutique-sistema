@@ -33,7 +33,35 @@ process.on('exit', saveDatabase);
 process.on('SIGINT', () => { saveDatabase(); process.exit(0); });
 process.on('SIGTERM', () => { saveDatabase(); process.exit(0); });
 
+// Función para crear respaldos automáticos
+function createBackup() {
+  const backupDir = path.join(__dirname, '..', 'backups');
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+
+  if (fs.existsSync(DB_PATH)) {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(backupDir, `negocio_backup_${timestamp}.db`);
+    fs.copyFileSync(DB_PATH, backupPath);
+    console.log(`🛡️ Respaldo automático creado: ${backupPath}`);
+
+    // Mantener solo los últimos 20 respaldos
+    const files = fs.readdirSync(backupDir)
+      .filter(f => f.startsWith('negocio_backup_'))
+      .map(f => ({ name: f, time: fs.statSync(path.join(backupDir, f)).mtime.getTime() }))
+      .sort((a, b) => b.time - a.time);
+
+    if (files.length > 20) {
+      files.slice(20).forEach(f => fs.unlinkSync(path.join(backupDir, f.name)));
+    }
+  }
+}
+
 async function initDatabase() {
+  // Crear respaldo al iniciar
+  createBackup();
+
   const SQL = await initSqlJs();
 
   // Cargar base de datos existente o crear nueva
@@ -66,11 +94,19 @@ async function initDatabase() {
       asignadoA TEXT DEFAULT NULL,
       urgente INTEGER DEFAULT 0,
       viaWhatsapp INTEGER DEFAULT 0,
+      pagaAlRecibir INTEGER DEFAULT 0,
       eliminada INTEGER DEFAULT 0,
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL
     )
   `);
+
+  // Add pagaAlRecibir column if it doesn't exist
+  try {
+    db.run("ALTER TABLE notas ADD COLUMN pagaAlRecibir INTEGER DEFAULT 0");
+  } catch (e) {
+    // Column already exists
+  }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS items_nota (
@@ -237,6 +273,7 @@ function enrichNota(nota) {
     pagada: !!nota.pagada,
     entregada: !!nota.entregada,
     viaWhatsapp: !!nota.viaWhatsapp,
+    pagaAlRecibir: !!nota.pagaAlRecibir,
     eliminada: !!nota.eliminada,
     urgente: !!nota.urgente,
     asignadoA: asignadoArreglo,
@@ -264,8 +301,8 @@ function createNota(data) {
   const now = new Date().toISOString();
 
   db.run(`
-    INSERT INTO notas (id, numeroNota, fecha, clienteNombre, clienteTelefono, fechaEvento, fechaEntrega, total, comentarios, terminada, pagada, entregada, asignadoA, urgente, viaWhatsapp, eliminada, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO notas (id, numeroNota, fecha, clienteNombre, clienteTelefono, fechaEvento, fechaEntrega, total, comentarios, terminada, pagada, entregada, asignadoA, urgente, viaWhatsapp, pagaAlRecibir, eliminada, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     id, numeroNota, data.fecha, data.clienteNombre,
     data.clienteTelefono || '', data.fechaEvento || '', data.fechaEntrega || '',
@@ -273,7 +310,8 @@ function createNota(data) {
     data.terminada ? 1 : 0, data.pagada ? 1 : 0, data.entregada ? 1 : 0,
     data.asignadoA && Array.isArray(data.asignadoA) && data.asignadoA.length > 0 ? JSON.stringify(data.asignadoA) : null,
     data.urgente ? 1 : 0,
-    data.viaWhatsapp ? 1 : 0, 0,
+    data.viaWhatsapp ? 1 : 0,
+    data.pagaAlRecibir ? 1 : 0, 0,
     now, now
   ]);
 
@@ -324,7 +362,7 @@ function updateNota(id, updates) {
 
   // Campos simples
   const simpleFields = ['fecha', 'clienteNombre', 'clienteTelefono', 'fechaEvento', 'fechaEntrega', 'total', 'comentarios'];
-  const boolFields = ['terminada', 'pagada', 'entregada', 'urgente', 'viaWhatsapp', 'eliminada'];
+  const boolFields = ['terminada', 'pagada', 'entregada', 'urgente', 'viaWhatsapp', 'pagaAlRecibir', 'eliminada'];
 
   const setClauses = ['updatedAt = ?'];
   const values = [now];

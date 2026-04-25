@@ -36,6 +36,7 @@ export interface Nota {
   disenadoresTerminados: string[];
   urgente: boolean;
   viaWhatsapp: boolean;
+  pagaAlRecibir: boolean;
   imagenesReferencia: string[];
   abonos: Abono[];
 }

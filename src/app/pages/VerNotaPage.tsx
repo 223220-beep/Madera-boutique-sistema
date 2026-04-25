@@ -231,6 +231,7 @@ export function VerNotaPage() {
               terminada={nota.terminada}
               pagada={nota.pagada}
               entregada={nota.entregada}
+              pagaAlRecibir={nota.pagaAlRecibir}
               viaWhatsapp={nota.viaWhatsapp}
             />
           </div>

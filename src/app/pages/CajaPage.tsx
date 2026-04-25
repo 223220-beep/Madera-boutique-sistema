@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { cajaApi } from "../utils/api";
 import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { ArrowLeft, Wallet, Calendar, DollarSign, CreditCard, Send, Loader2 } from "lucide-react";
 import { NotaHeader } from "../components/NotaHeader";
@@ -10,7 +11,18 @@ import { useSocket } from "../utils/socket";
 export function CajaPage() {
     const [movimientos, setMovimientos] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [password, setPassword] = useState("");
+    const [isAuthorized, setIsAuthorized] = useState(false);
     const { onNotaCreated, onNotaUpdated } = useSocket();
+
+    const checkPassword = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (password.toLowerCase() === "madera2026") {
+            setIsAuthorized(true);
+        } else {
+            alert("Contraseña incorrecta");
+        }
+    };
 
     const cargarCaja = async () => {
         try {
@@ -25,15 +37,58 @@ export function CajaPage() {
     };
 
     useEffect(() => {
-        cargarCaja();
-        const cleanupCreated = onNotaCreated(cargarCaja);
-        const cleanupUpdated = onNotaUpdated(cargarCaja);
+        if (isAuthorized) {
+            cargarCaja();
+            const cleanupCreated = onNotaCreated(cargarCaja);
+            const cleanupUpdated = onNotaUpdated(cargarCaja);
 
-        return () => {
-            cleanupCreated();
-            cleanupUpdated();
-        };
-    }, [onNotaCreated, onNotaUpdated]);
+            return () => {
+                cleanupCreated();
+                cleanupUpdated();
+            };
+        }
+    }, [onNotaCreated, onNotaUpdated, isAuthorized]);
+
+    if (!isAuthorized) {
+        return (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
+                <div className="bg-white rounded-3xl p-8 shadow-2xl max-w-md w-full border border-slate-100 animate-in zoom-in-95 duration-300">
+                    <div className="flex flex-col items-center mb-8">
+                        <div className="bg-[#ff7908] p-4 rounded-2xl shadow-orange-200 shadow-xl mb-4">
+                            <Wallet className="w-10 h-10 text-white" />
+                        </div>
+                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Acceso Restringido</h1>
+                        <p className="text-slate-500 font-medium">Ingresa la contraseña de Caja</p>
+                    </div>
+
+                    <form onSubmit={checkPassword} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Contraseña</label>
+                            <Input 
+                                type="password" 
+                                value={password} 
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="h-12 bg-slate-50 border-slate-200 rounded-xl focus:ring-[#ff7908] text-lg font-bold text-center"
+                                placeholder="••••••••"
+                                autoFocus
+                            />
+                        </div>
+                        
+                        <div className="flex gap-3">
+                            <Link to="/" className="flex-1">
+                                <Button type="button" variant="ghost" className="w-full h-12 rounded-xl font-bold text-slate-500">
+                                    Volver
+                                </Button>
+                            </Link>
+                            <Button type="submit" className="flex-[2] h-12 rounded-xl bg-[#ff7908] hover:bg-[#ffac08] text-white font-black uppercase tracking-tight shadow-lg shadow-orange-100">
+                                Ingresar
+                            </Button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
+    }
 
     // Agrupar por fecha (YYYY-MM-DD)
     const agrupadoPorFecha = movimientos.reduce((acc: any, curr: any) => {

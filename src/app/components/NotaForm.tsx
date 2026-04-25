@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
-import { Trash2, Plus, MessageCircle } from "lucide-react";
+import { Trash2, Plus, MessageCircle, DollarSign } from "lucide-react";
 import { ImageUpload } from "./ImageUpload";
 import { Switch } from "./ui/switch";
 
@@ -19,6 +19,7 @@ interface NotaFormProps {
     items: ItemNota[];
     imagenesReferencia?: string[];
     viaWhatsapp?: boolean;
+    pagaAlRecibir?: boolean;
     comentarios?: string;
   };
   onSubmit: (data: {
@@ -31,6 +32,7 @@ interface NotaFormProps {
     total: number;
     imagenesReferencia: string[];
     viaWhatsapp: boolean;
+    pagaAlRecibir: boolean;
     comentarios: string;
   }) => void;
   onCancel: () => void;
@@ -45,6 +47,7 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
   const [fechaEntrega, setFechaEntrega] = useState(initialData?.fechaEntrega || "");
   const [imagenesReferencia, setImagenesReferencia] = useState<string[]>(initialData?.imagenesReferencia || []);
   const [viaWhatsapp, setViaWhatsapp] = useState(!!initialData?.viaWhatsapp);
+  const [pagaAlRecibir, setPagaAlRecibir] = useState(!!initialData?.pagaAlRecibir);
   const [comentarios, setComentarios] = useState(initialData?.comentarios || "");
   const [items, setItems] = useState<ItemNota[]>(
     initialData?.items || [
@@ -116,6 +119,7 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
       total,
       imagenesReferencia,
       viaWhatsapp,
+      pagaAlRecibir,
       comentarios,
     });
   };
@@ -200,17 +204,31 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
             <Label className="text-white text-center block mb-2">NOTA NÚMERO</Label>
             <div className="text-center text-2xl font-bold">AUTO</div>
           </div>
-          <div className="mt-4 pt-4 border-t border-orange-300 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MessageCircle className="w-4 h-4" />
-              <Label className="text-white cursor-pointer" htmlFor="whatsapp-toggle">Vía WhatsApp</Label>
+          <div className="mt-2 pt-2 border-t border-orange-300 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4" />
+                <Label className="text-white cursor-pointer" htmlFor="whatsapp-toggle">Vía WhatsApp</Label>
+              </div>
+              <Switch
+                id="whatsapp-toggle"
+                checked={viaWhatsapp}
+                onCheckedChange={setViaWhatsapp}
+                className="data-[state=checked]:bg-green-500"
+              />
             </div>
-            <Switch
-              id="whatsapp-toggle"
-              checked={viaWhatsapp}
-              onCheckedChange={setViaWhatsapp}
-              className="data-[state=checked]:bg-green-500"
-            />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                <Label className="text-white cursor-pointer" htmlFor="paga-recibir-toggle">Paga al Recibir</Label>
+              </div>
+              <Switch
+                id="paga-recibir-toggle"
+                checked={pagaAlRecibir}
+                onCheckedChange={setPagaAlRecibir}
+                className="data-[state=checked]:bg-amber-500"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -272,6 +290,18 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
           placeholder="Escribe aquí las especificaciones del cliente..."
           className="bg-white text-black min-h-[100px] text-lg"
         />
+      </div>
+
+      {/* Imágenes de Referencia */}
+      <div className="bg-gradient-to-br from-[#ff7908] to-[#ffac08] text-white p-4 rounded-lg shadow-sm">
+        <h3 className="text-center font-bold mb-4">IMÁGENES DE REFERENCIA / DISEÑOS</h3>
+        <div className="bg-white p-4 rounded-lg">
+          <ImageUpload
+            images={imagenesReferencia}
+            onImagesChange={setImagenesReferencia}
+            maxImages={5}
+          />
+        </div>
       </div>
 
       {/* Tabla de Items */}

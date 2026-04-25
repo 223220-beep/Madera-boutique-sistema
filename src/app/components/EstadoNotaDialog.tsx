@@ -16,16 +16,17 @@ interface EstadoNotaDialogProps {
   nota: Nota;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdate: (updates: { terminada: boolean; pagada: boolean; entregada: boolean }) => void;
+  onUpdate: (updates: { terminada: boolean; pagada: boolean; entregada: boolean; pagaAlRecibir: boolean }) => void;
 }
 
 export function EstadoNotaDialog({ nota, open, onOpenChange, onUpdate }: EstadoNotaDialogProps) {
   const [terminada, setTerminada] = useState(nota.terminada);
   const [pagada, setPagada] = useState(nota.pagada);
   const [entregada, setEntregada] = useState(nota.entregada);
+  const [pagaAlRecibir, setPagaAlRecibir] = useState(nota.pagaAlRecibir);
 
   const handleSave = () => {
-    onUpdate({ terminada, pagada, entregada });
+    onUpdate({ terminada, pagada, entregada, pagaAlRecibir });
     onOpenChange(false);
   };
 
@@ -40,6 +41,17 @@ export function EstadoNotaDialog({ nota, open, onOpenChange, onUpdate }: EstadoN
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="pagaAlRecibir"
+              checked={pagaAlRecibir}
+              onCheckedChange={(checked) => setPagaAlRecibir(checked as boolean)}
+            />
+            <Label htmlFor="pagaAlRecibir" className="cursor-pointer">
+              <span className="font-semibold text-amber-700">Paga al Recibir</span> - El cliente pagará al momento de la entrega
+            </Label>
+          </div>
+
           <div className="flex items-center space-x-2">
             <Checkbox
               id="terminada"
