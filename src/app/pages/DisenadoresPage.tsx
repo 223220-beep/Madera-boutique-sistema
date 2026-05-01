@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { notasApi, disenadoresApi } from "../utils/api";
 import { useSocket } from "../utils/socket";
 import { Nota } from "../types/nota";
@@ -29,17 +29,34 @@ import { toast } from "sonner";
 import { GestionDisenadoresDialog } from "../components/GestionDisenadoresDialog";
 
 export function DisenadoresPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [notas, setNotas] = useState<Nota[]>([]);
   const [notasPendientes, setNotasPendientes] = useState<Nota[]>([]);
   const [notasEnProceso, setNotasEnProceso] = useState<Nota[]>([]);
   const [notasTerminadas, setNotasTerminadas] = useState<Nota[]>([]);
-  const [selectedDisenador, setSelectedDisenador] = useState<string>("");
-  const [filterDateType, setFilterDateType] = useState<"creacion" | "entrega">("creacion");
-  const [filterStartDate, setFilterStartDate] = useState<string>("");
-  const [filterEndDate, setFilterEndDate] = useState<string>("");
+
+  // Inicializar filtros y tab desde la URL para restaurarlos al regresar
+  const [selectedDisenador, setSelectedDisenador] = useState<string>(searchParams.get("disenador") || "");
+  const [filterDateType, setFilterDateType] = useState<"creacion" | "entrega">((searchParams.get("tipoFecha") as "creacion" | "entrega") || "creacion");
+  const [filterStartDate, setFilterStartDate] = useState<string>(searchParams.get("desde") || "");
+  const [filterEndDate, setFilterEndDate] = useState<string>(searchParams.get("hasta") || "");
+  const [activeTab, setActiveTab] = useState<string>(searchParams.get("tab") || "pendientes");
+
   const [disenadores, setDisenadores] = useState<string[]>([]);
   const [showGestionDialog, setShowGestionDialog] = useState(false);
   const { onNotaCreated, onNotaUpdated, onDisenadoresUpdated } = useSocket();
+
+  // Sincronizar filtros y tab activo con la URL
+  useEffect(() => {
+    const params: Record<string, string> = {};
+    if (activeTab && activeTab !== "pendientes") params.tab = activeTab;
+    if (selectedDisenador) params.disenador = selectedDisenador;
+    if (filterDateType && filterDateType !== "creacion") params.tipoFecha = filterDateType;
+    if (filterStartDate) params.desde = filterStartDate;
+    if (filterEndDate) params.hasta = filterEndDate;
+    setSearchParams(params, { replace: true });
+  }, [activeTab, selectedDisenador, filterDateType, filterStartDate, filterEndDate]);
 
   useEffect(() => {
     cargarNotas();
@@ -433,7 +450,7 @@ export function DisenadoresPage() {
           </div>
 
           {/* Tabs de notas */}
-          <Tabs defaultValue="pendientes" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="pendientes">
                 Pendientes ({notasPendientes.length})

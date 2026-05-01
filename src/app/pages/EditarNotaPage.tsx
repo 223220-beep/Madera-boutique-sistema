@@ -28,7 +28,7 @@ export function EditarNotaPage() {
     try {
       await notasApi.update(id, data);
       toast.success("Nota actualizada exitosamente");
-      navigate("/");
+      navigate(-1);
     } catch (error) {
       toast.error("Error al actualizar la nota");
       console.error(error);
@@ -68,7 +68,7 @@ export function EditarNotaPage() {
               comentarios: nota.comentarios,
             }}
             onSubmit={handleSubmit}
-            onCancel={() => navigate("/")}
+            onCancel={() => navigate(-1)}
             submitLabel="Actualizar Nota"
           />
         </div>

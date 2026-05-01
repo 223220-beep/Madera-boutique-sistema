@@ -40,7 +40,23 @@ interface NotaFormProps {
 }
 
 export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear Nota" }: NotaFormProps) {
-  const [fecha, setFecha] = useState(initialData?.fecha || new Date().toISOString().split("T")[0]);
+  const getLocalDate = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  // Convierte un objeto Date a string YYYY-MM-DD usando hora LOCAL (no UTC)
+  const dateToLocalString = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const [fecha, setFecha] = useState(initialData?.fecha || getLocalDate());
   const [clienteNombre, setClienteNombre] = useState(initialData?.clienteNombre || "");
   const [clienteTelefono, setClienteTelefono] = useState(initialData?.clienteTelefono || "");
   const [fechaEvento, setFechaEvento] = useState(initialData?.fechaEvento || "");
@@ -162,7 +178,7 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
               onChange={(e) => {
                 const newDate = new Date(fecha + "T00:00:00");
                 newDate.setDate(Number(e.target.value));
-                setFecha(newDate.toISOString().split("T")[0]);
+                setFecha(dateToLocalString(newDate));
               }}
               className="w-16 text-center bg-white text-black"
               required
@@ -176,7 +192,7 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
               onChange={(e) => {
                 const newDate = new Date(fecha + "T00:00:00");
                 newDate.setMonth(Number(e.target.value) - 1);
-                setFecha(newDate.toISOString().split("T")[0]);
+                setFecha(dateToLocalString(newDate));
               }}
               className="w-16 text-center bg-white text-black"
               required
@@ -191,7 +207,7 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
                 const anioCompleto = 2000 + Number(e.target.value);
                 const newDate = new Date(fecha + "T00:00:00");
                 newDate.setFullYear(anioCompleto);
-                setFecha(newDate.toISOString().split("T")[0]);
+                setFecha(dateToLocalString(newDate));
               }}
               className="w-16 text-center bg-white text-black"
               required

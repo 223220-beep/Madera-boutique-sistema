@@ -83,7 +83,7 @@ export function VerNotaPage() {
       <div className="max-w-4xl mx-auto">
         {/* Botones de acción - solo visible en pantalla */}
         <div className="mb-6 flex gap-4 print:hidden">
-          <Button onClick={() => navigate("/")} variant="outline">
+          <Button onClick={() => navigate(-1)} variant="outline">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Volver
           </Button>
