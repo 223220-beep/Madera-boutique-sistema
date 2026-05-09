@@ -415,9 +415,7 @@ function updateNota(id, updates) {
     
     if (totalActual > (totalAbonado + 0.01)) {
       const restante = totalActual - totalAbonado;
-      const nowObj = new Date();
-      const offset = nowObj.getTimezoneOffset() * 60000;
-      const localNow = new Date(nowObj.getTime() - offset).toISOString();
+      const localNow = new Date().toISOString();
 
       db.run(`
         INSERT INTO abonos (id, notaId, fecha, monto, nota)

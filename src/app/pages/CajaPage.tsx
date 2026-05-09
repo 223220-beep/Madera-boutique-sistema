@@ -90,20 +90,35 @@ export function CajaPage() {
         );
     }
 
-    // Agrupar por fecha (YYYY-MM-DD)
+    // Agrupar por fecha (usando fecha local del cliente)
     const agrupadoPorFecha = movimientos.reduce((acc: any, curr: any) => {
         if (!curr.fecha) return acc;
-        // Extraer solo la fecha YYYY-MM-DD
-        const dateKey = curr.fecha.includes('T') ? curr.fecha.split('T')[0] : curr.fecha;
-        if (!acc[dateKey]) acc[dateKey] = [];
-        acc[dateKey].push(curr);
+        
+        // Parsear la fecha y extraer año, mes y día local para la agrupación
+        const d = new Date(curr.fecha);
+        if (isNaN(d.getTime())) {
+            // Fallback si la fecha no es válida
+            const dateKey = curr.fecha.split('T')[0];
+            if (!acc[dateKey]) acc[dateKey] = [];
+            acc[dateKey].push(curr);
+        } else {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const dateKey = `${year}-${month}-${day}`;
+            
+            if (!acc[dateKey]) acc[dateKey] = [];
+            acc[dateKey].push(curr);
+        }
         return acc;
     }, {});
 
     const fechasOrdenadas = Object.keys(agrupadoPorFecha).sort((a, b) => b.localeCompare(a));
 
     const formatearFecha = (fechaStr: string) => {
-        const date = new Date(fechaStr + "T12:00:00");
+        // fechaStr viene como YYYY-MM-DD
+        const [year, month, day] = fechaStr.split('-').map(Number);
+        const date = new Date(year, month - 1, day, 12, 0, 0);
         return date.toLocaleDateString("es-MX", {
             weekday: 'long',
             year: 'numeric',

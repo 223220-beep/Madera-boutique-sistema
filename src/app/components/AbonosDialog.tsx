@@ -44,9 +44,12 @@ export function AbonosDialog({ nota, open, onOpenChange, onUpdate }: AbonosDialo
     const prefix = tag + (tag && nuevaNota ? " - " : "");
     const finalNotaText = prefix + (nuevaNota || "");
 
+    const now = new Date();
+    const finalDate = now.toISOString();
+
     const nuevoAbono: Abono = {
       id: generateId(),
-      fecha: new Date().toISOString(),
+      fecha: finalDate,
       monto,
       nota: finalNotaText || undefined,
     };
