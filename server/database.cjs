@@ -59,23 +59,34 @@ function createBackup() {
 }
 
 async function initDatabase() {
-  // Crear respaldo al iniciar
-  createBackup();
-
   const SQL = await initSqlJs();
 
   // Cargar base de datos existente o crear nueva
   if (fs.existsSync(DB_PATH)) {
     const fileBuffer = fs.readFileSync(DB_PATH);
-    db = new SQL.Database(fileBuffer);
-    console.log('📂 Base de datos cargada desde disco');
+    try {
+      db = new SQL.Database(fileBuffer);
+      // Validar que la base de datos realmente es legible
+      db.run('PRAGMA foreign_keys = ON');
+      // Intentar leer las tablas maestras para confirmar que el archivo no está corrupto
+      db.exec("SELECT count(*) FROM sqlite_master");
+      
+      console.log('📂 Base de datos cargada y validada desde disco');
+      
+      // SOLO respaldamos si la base de datos no lanzó error (es válida)
+      createBackup();
+    } catch (e) {
+      console.error('\n🔥 ERROR CRÍTICO: La base de datos "negocio.db" parece estar corrupta ("file is not a database").');
+      console.error('⚠️ NO se creó un respaldo corrupto.');
+      console.error('🛑 EL SERVIDOR SE DETENDRÁ. Por favor restaura un respaldo antiguo válido desde la carpeta "backups".\n');
+      throw e; // Detener la inicialización
+    }
   } else {
     db = new SQL.Database();
     console.log('🆕 Nueva base de datos creada');
+    db.run('PRAGMA foreign_keys = ON');
+    createBackup();
   }
-
-  // Activar foreign keys
-  db.run('PRAGMA foreign_keys = ON');
 
   // ========== CREAR TABLAS ==========
   db.run(`
@@ -404,10 +415,14 @@ function updateNota(id, updates) {
     
     if (totalActual > (totalAbonado + 0.01)) {
       const restante = totalActual - totalAbonado;
+      const nowObj = new Date();
+      const offset = nowObj.getTimezoneOffset() * 60000;
+      const localNow = new Date(nowObj.getTime() - offset).toISOString();
+
       db.run(`
         INSERT INTO abonos (id, notaId, fecha, monto, nota)
         VALUES (?, ?, ?, ?, ?)
-      `, [crypto.randomUUID(), id, now, restante, 'Liquidación (Automática)']);
+      `, [crypto.randomUUID(), id, localNow, restante, 'Liquidación (Automática)']);
     }
   }
 
