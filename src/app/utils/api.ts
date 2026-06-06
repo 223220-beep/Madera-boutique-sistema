@@ -104,3 +104,32 @@ export const itemsApi = {
 export const cajaApi = {
     getReport: (): Promise<any[]> => request('/api/caja'),
 };
+
+// ========== API DE CLIENTES ==========
+
+export interface Cliente {
+    id: string;
+    nombre: string;
+    telefono: string;
+}
+
+export const clientesApi = {
+    getAll: (): Promise<Cliente[]> => request('/api/clientes'),
+
+    add: (data: { nombre: string; telefono?: string }): Promise<Cliente> =>
+        request('/api/clientes', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+
+    update: (id: string, data: { nombre: string; telefono?: string }): Promise<Cliente> =>
+        request(`/api/clientes/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        }),
+
+    delete: (id: string) =>
+        request(`/api/clientes/${id}`, {
+            method: 'DELETE',
+        }),
+};

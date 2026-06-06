@@ -143,6 +143,53 @@ app.delete('/api/disenadores/:nombre', (req, res) => {
   }
 });
 
+// ========== RUTAS DE CLIENTES ==========
+
+app.get('/api/clientes', (req, res) => {
+  try {
+    const clientes = database.getClientes();
+    res.json(clientes);
+  } catch (err) {
+    console.error('Error al obtener clientes:', err);
+    res.status(500).json({ error: 'Error al obtener clientes' });
+  }
+});
+
+app.post('/api/clientes', (req, res) => {
+  try {
+    const cliente = database.addCliente(req.body);
+    io.emit('clientes:updated', database.getClientes());
+    res.status(201).json(cliente);
+  } catch (err) {
+    console.error('Error al agregar cliente:', err);
+    res.status(500).json({ error: 'Error al agregar cliente' });
+  }
+});
+
+app.put('/api/clientes/:id', (req, res) => {
+  try {
+    const cliente = database.updateCliente(req.params.id, req.body);
+    if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
+    io.emit('clientes:updated', database.getClientes());
+    res.json(cliente);
+  } catch (err) {
+    console.error('Error al actualizar cliente:', err);
+    res.status(500).json({ error: 'Error al actualizar cliente' });
+  }
+});
+
+app.delete('/api/clientes/:id', (req, res) => {
+  try {
+    const success = database.deleteCliente(req.params.id);
+    if (!success) return res.status(404).json({ error: 'Cliente no encontrado' });
+    io.emit('clientes:updated', database.getClientes());
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error al eliminar cliente:', err);
+    res.status(500).json({ error: 'Error al eliminar cliente' });
+  }
+});
+
 // ========== ITEMS ==========
 
 app.patch('/api/items/:itemId', (req, res) => {

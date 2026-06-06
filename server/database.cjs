@@ -14,12 +14,19 @@ if (!fs.existsSync(dataDir)) {
 
 let db = null;
 
-// Guardar la base de datos al disco automáticamente
+// Guardar la base de datos al disco de forma ATÓMICA
+// (se escribe a un archivo temporal y luego se renombra para evitar corrupción)
 function saveDatabase() {
   if (db) {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(DB_PATH, buffer);
+    try {
+      const data = db.export();
+      const buffer = Buffer.from(data);
+      const tempPath = DB_PATH + '.tmp';
+      fs.writeFileSync(tempPath, buffer);
+      fs.renameSync(tempPath, DB_PATH); // Operación atómica: nunca deja el archivo a medias
+    } catch (err) {
+      console.error('⚠️ Error al guardar la base de datos:', err);
+    }
   }
 }
 
@@ -33,29 +40,69 @@ process.on('exit', saveDatabase);
 process.on('SIGINT', () => { saveDatabase(); process.exit(0); });
 process.on('SIGTERM', () => { saveDatabase(); process.exit(0); });
 
+const BACKUP_DIR = path.join(__dirname, '..', 'backups');
+
 // Función para crear respaldos automáticos
 function createBackup() {
-  const backupDir = path.join(__dirname, '..', 'backups');
-  if (!fs.existsSync(backupDir)) {
-    fs.mkdirSync(backupDir, { recursive: true });
+  if (!fs.existsSync(BACKUP_DIR)) {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
   }
 
   if (fs.existsSync(DB_PATH)) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupPath = path.join(backupDir, `negocio_backup_${timestamp}.db`);
+    const backupPath = path.join(BACKUP_DIR, `negocio_backup_${timestamp}.db`);
     fs.copyFileSync(DB_PATH, backupPath);
     console.log(`🛡️ Respaldo automático creado: ${backupPath}`);
 
-    // Mantener solo los últimos 20 respaldos
-    const files = fs.readdirSync(backupDir)
+    // Mantener solo los últimos 30 respaldos
+    const files = fs.readdirSync(BACKUP_DIR)
       .filter(f => f.startsWith('negocio_backup_'))
-      .map(f => ({ name: f, time: fs.statSync(path.join(backupDir, f)).mtime.getTime() }))
+      .map(f => ({ name: f, time: fs.statSync(path.join(BACKUP_DIR, f)).mtime.getTime() }))
       .sort((a, b) => b.time - a.time);
 
-    if (files.length > 20) {
-      files.slice(20).forEach(f => fs.unlinkSync(path.join(backupDir, f.name)));
+    if (files.length > 30) {
+      files.slice(30).forEach(f => fs.unlinkSync(path.join(BACKUP_DIR, f.name)));
     }
   }
+}
+
+// Intenta restaurar el backup válido más reciente.
+// Devuelve true si tuvo éxito, false si no encontró ninguno.
+function autoRestoreLatestBackup(SQL) {
+  if (!fs.existsSync(BACKUP_DIR)) {
+    console.error('❌ No existe la carpeta de backups, no se puede restaurar.');
+    return false;
+  }
+
+  const backupFiles = fs.readdirSync(BACKUP_DIR)
+    .filter(f => f.startsWith('negocio_backup_') && f.endsWith('.db'))
+    .map(f => ({ name: f, time: fs.statSync(path.join(BACKUP_DIR, f)).mtime.getTime() }))
+    .sort((a, b) => b.time - a.time); // Más reciente primero
+
+  if (backupFiles.length === 0) {
+    console.error('❌ No hay backups disponibles para restaurar.');
+    return false;
+  }
+
+  for (const backup of backupFiles) {
+    const backupPath = path.join(BACKUP_DIR, backup.name);
+    try {
+      const fileBuffer = fs.readFileSync(backupPath);
+      const testDb = new SQL.Database(fileBuffer);
+      testDb.exec("SELECT count(*) FROM sqlite_master"); // Validar que es válido
+      testDb.close();
+
+      // El backup es válido, copiarlo como la nueva DB
+      fs.copyFileSync(backupPath, DB_PATH);
+      console.log(`✅ Base de datos restaurada exitosamente desde: ${backup.name}`);
+      return true;
+    } catch (e) {
+      console.warn(`⚠️ Backup inválido, probando el anterior: ${backup.name}`);
+    }
+  }
+
+  console.error('❌ Todos los backups están dañados. No se pudo restaurar.');
+  return false;
 }
 
 async function initDatabase() {
@@ -76,10 +123,19 @@ async function initDatabase() {
       // SOLO respaldamos si la base de datos no lanzó error (es válida)
       createBackup();
     } catch (e) {
-      console.error('\n🔥 ERROR CRÍTICO: La base de datos "negocio.db" parece estar corrupta ("file is not a database").');
-      console.error('⚠️ NO se creó un respaldo corrupto.');
-      console.error('🛑 EL SERVIDOR SE DETENDRÁ. Por favor restaura un respaldo antiguo válido desde la carpeta "backups".\n');
-      throw e; // Detener la inicialización
+      console.error('\n🔥 Base de datos corrupta detectada. Intentando restaurar desde backup automáticamente...');
+      
+      const restored = autoRestoreLatestBackup(SQL);
+      if (!restored) {
+        console.error('🛑 No se pudo restaurar ningún backup. El servidor se detendrá.');
+        throw e;
+      }
+
+      // Cargar la base de datos restaurada
+      const restoredBuffer = fs.readFileSync(DB_PATH);
+      db = new SQL.Database(restoredBuffer);
+      db.run('PRAGMA foreign_keys = ON');
+      console.log('🔄 Servidor iniciado con la base de datos restaurada. Los datos recientes pueden estar hasta 5 minutos atrás.');
     }
   } else {
     db = new SQL.Database();
@@ -157,6 +213,14 @@ async function initDatabase() {
     CREATE TABLE IF NOT EXISTS disenadores (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nombre TEXT NOT NULL UNIQUE
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS clientes (
+      id TEXT PRIMARY KEY,
+      nombre TEXT NOT NULL,
+      telefono TEXT DEFAULT ''
     )
   `);
 
@@ -485,6 +549,37 @@ function getReporteCaja() {
   return queryAll(sql);
 }
 
+// ========== FUNCIONES DE CLIENTES ==========
+
+function getClientes() {
+  return queryAll('SELECT * FROM clientes ORDER BY nombre ASC');
+}
+
+function addCliente(data) {
+  const id = crypto.randomUUID();
+  db.run('INSERT INTO clientes (id, nombre, telefono) VALUES (?, ?, ?)', [id, data.nombre, data.telefono || '']);
+  saveDatabase();
+  return { id, nombre: data.nombre, telefono: data.telefono || '' };
+}
+
+function updateCliente(id, data) {
+  const existing = queryOne('SELECT * FROM clientes WHERE id = ?', [id]);
+  if (!existing) return null;
+  
+  db.run('UPDATE clientes SET nombre = ?, telefono = ? WHERE id = ?', [data.nombre, data.telefono || '', id]);
+  saveDatabase();
+  return { id, nombre: data.nombre, telefono: data.telefono || '' };
+}
+
+function deleteCliente(id) {
+  const existing = queryOne('SELECT * FROM clientes WHERE id = ?', [id]);
+  if (!existing) return false;
+  
+  db.run('DELETE FROM clientes WHERE id = ?', [id]);
+  saveDatabase();
+  return true;
+}
+
 // ========== FUNCIONES DE DISEÑADORES ==========
 
 function getDisenadores() {
@@ -591,4 +686,8 @@ module.exports = {
   updateDisenador,
   deleteDisenador,
   getReporteCaja,
+  getClientes,
+  addCliente,
+  updateCliente,
+  deleteCliente,
 };

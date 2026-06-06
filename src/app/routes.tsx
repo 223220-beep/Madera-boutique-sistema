@@ -6,6 +6,7 @@ import { VerNotaPage } from "./pages/VerNotaPage";
 import { DisenadoresPage } from "./pages/DisenadoresPage";
 import { CalendarioPage } from "./pages/CalendarioPage";
 import { CajaPage } from "./pages/CajaPage";
+import { DirectorioPage } from "./pages/DirectorioPage";
 import { Layout } from "./components/Layout";
 import { ErrorPage } from "./components/ErrorPage";
 
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
       { path: "disenadores", Component: DisenadoresPage },
       { path: "calendario", Component: CalendarioPage },
       { path: "caja", Component: CajaPage },
+      { path: "directorio", Component: DirectorioPage },
     ],
   },
 ]);

@@ -36,7 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
-import { Plus, Eye, Pencil, Trash2, Search, ListChecks, Users, DollarSign, CalendarDays, Package, Filter, X, Wallet } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Search, ListChecks, Users, DollarSign, CalendarDays, Package, Filter, X, Wallet, BookUser } from "lucide-react";
 import { toast } from "sonner";
 
 export function NotasListPage() {
@@ -195,6 +195,12 @@ export function NotasListPage() {
                 <Button variant="outline" className="border-emerald-500 text-emerald-700 hover:bg-emerald-50">
                   <Wallet className="w-4 h-4 mr-2" />
                   Caja
+                </Button>
+              </Link>
+              <Link to="/directorio">
+                <Button variant="outline" className="border-blue-500 text-blue-700 hover:bg-blue-50">
+                  <BookUser className="w-4 h-4 mr-2" />
+                  Directorio
                 </Button>
               </Link>
               <Link to="/crear">

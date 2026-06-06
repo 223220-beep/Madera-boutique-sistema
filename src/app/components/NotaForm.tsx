@@ -5,9 +5,10 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
-import { Trash2, Plus, MessageCircle, DollarSign } from "lucide-react";
+import { Trash2, Plus, MessageCircle, DollarSign, BookUser } from "lucide-react";
 import { ImageUpload } from "./ImageUpload";
 import { Switch } from "./ui/switch";
+import { SeleccionarClienteDialog } from "./SeleccionarClienteDialog";
 
 interface NotaFormProps {
   initialData?: {
@@ -65,6 +66,7 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
   const [viaWhatsapp, setViaWhatsapp] = useState(!!initialData?.viaWhatsapp);
   const [pagaAlRecibir, setPagaAlRecibir] = useState(!!initialData?.pagaAlRecibir);
   const [comentarios, setComentarios] = useState(initialData?.comentarios || "");
+  const [showClienteDialog, setShowClienteDialog] = useState(false);
   const [items, setItems] = useState<ItemNota[]>(
     initialData?.items || [
       {
@@ -250,8 +252,21 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
       </div>
 
       {/* Cliente */}
-      <div className="bg-gradient-to-br from-[#ff7908] to-[#ffac08] text-white p-4 rounded-lg">
-        <h3 className="text-center font-bold mb-4">CLIENTE</h3>
+      <div className="bg-gradient-to-br from-[#ff7908] to-[#ffac08] text-white p-4 rounded-lg relative">
+        <div className="flex items-center justify-center mb-4 relative">
+          <h3 className="font-bold">CLIENTE</h3>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowClienteDialog(true)}
+            className="absolute right-0 bg-white text-[#ff7908] hover:bg-orange-50 border-0 h-8"
+            title="Importar desde Directorio"
+          >
+            <BookUser className="w-4 h-4 mr-2" />
+            Directorio
+          </Button>
+        </div>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -405,6 +420,15 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
           {submitLabel}
         </Button>
       </div>
+
+      <SeleccionarClienteDialog
+        open={showClienteDialog}
+        onOpenChange={setShowClienteDialog}
+        onSelect={(cliente) => {
+          setClienteNombre(cliente.nombre);
+          if (cliente.telefono) setClienteTelefono(cliente.telefono);
+        }}
+      />
     </form>
   );
 }
