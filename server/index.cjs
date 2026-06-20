@@ -190,6 +190,53 @@ app.delete('/api/clientes/:id', (req, res) => {
   }
 });
 
+// ========== RUTAS DE PRODUCTOS ==========
+
+app.get('/api/productos', (req, res) => {
+  try {
+    const productos = database.getProductos();
+    res.json(productos);
+  } catch (err) {
+    console.error('Error al obtener productos:', err);
+    res.status(500).json({ error: 'Error al obtener productos' });
+  }
+});
+
+app.post('/api/productos', (req, res) => {
+  try {
+    const producto = database.addProducto(req.body);
+    io.emit('productos:updated', database.getProductos());
+    res.status(201).json(producto);
+  } catch (err) {
+    console.error('Error al agregar producto:', err);
+    res.status(500).json({ error: 'Error al agregar producto' });
+  }
+});
+
+app.put('/api/productos/:id', (req, res) => {
+  try {
+    const producto = database.updateProducto(req.params.id, req.body);
+    if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
+    io.emit('productos:updated', database.getProductos());
+    res.json(producto);
+  } catch (err) {
+    console.error('Error al actualizar producto:', err);
+    res.status(500).json({ error: 'Error al actualizar producto' });
+  }
+});
+
+app.delete('/api/productos/:id', (req, res) => {
+  try {
+    const success = database.deleteProducto(req.params.id);
+    if (!success) return res.status(404).json({ error: 'Producto no encontrado' });
+    io.emit('productos:updated', database.getProductos());
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error al eliminar producto:', err);
+    res.status(500).json({ error: 'Error al eliminar producto' });
+  }
+});
+
 // ========== ITEMS ==========
 
 app.patch('/api/items/:itemId', (req, res) => {

@@ -9,6 +9,7 @@ interface SocketEvents {
     'nota:created': (nota: Nota) => void;
     'nota:updated': (nota: Nota) => void;
     'disenadores:updated': (disenadores: string[]) => void;
+    'productos:updated': () => void;
 }
 
 // ========== Context ==========
@@ -18,6 +19,7 @@ interface SocketContextType {
     onNotaCreated: (callback: (nota: Nota) => void) => () => void;
     onNotaUpdated: (callback: (nota: Nota) => void) => () => void;
     onDisenadoresUpdated: (callback: (disenadores: string[]) => void) => () => void;
+    onProductosUpdated: (callback: () => void) => () => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -80,8 +82,15 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         return () => { socket.off('disenadores:updated', callback); };
     }, []);
 
+    const onProductosUpdated = useCallback((callback: () => void) => {
+        const socket = socketRef.current;
+        if (!socket) return () => { };
+        socket.on('productos:updated', callback);
+        return () => { socket.off('productos:updated', callback); };
+    }, []);
+
     return (
-        <SocketContext.Provider value={{ connected, onNotaCreated, onNotaUpdated, onDisenadoresUpdated }}>
+        <SocketContext.Provider value={{ connected, onNotaCreated, onNotaUpdated, onDisenadoresUpdated, onProductosUpdated }}>
             {children}
         </SocketContext.Provider>
     );

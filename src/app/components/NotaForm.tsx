@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { ItemNota } from "../types/nota";
-import { generateId } from "../utils/api";
+import { generateId, productosApi } from "../utils/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
-import { Trash2, Plus, MessageCircle, DollarSign, BookUser } from "lucide-react";
+import { Trash2, Plus, MessageCircle, DollarSign, BookUser, Search } from "lucide-react";
 import { ImageUpload } from "./ImageUpload";
 import { Switch } from "./ui/switch";
 import { SeleccionarClienteDialog } from "./SeleccionarClienteDialog";
+import { SeleccionarProductoDialog } from "./SeleccionarProductoDialog";
+import { Producto } from "../types/producto";
 
 interface NotaFormProps {
   initialData?: {
@@ -67,6 +69,9 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
   const [pagaAlRecibir, setPagaAlRecibir] = useState(!!initialData?.pagaAlRecibir);
   const [comentarios, setComentarios] = useState(initialData?.comentarios || "");
   const [showClienteDialog, setShowClienteDialog] = useState(false);
+  const [showProductoDialog, setShowProductoDialog] = useState(false);
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [productos, setProductos] = useState<Producto[]>([]);
   const [items, setItems] = useState<ItemNota[]>(
     initialData?.items || [
       {
@@ -79,8 +84,40 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
     ]
   );
 
+  useEffect(() => {
+    cargarProductos();
+  }, []);
+
+  const cargarProductos = async () => {
+    try {
+      const data = await productosApi.getAll();
+      setProductos(data);
+    } catch (err) {
+      console.error("Error al cargar productos para autocompletar:", err);
+    }
+  };
+
   const calcularImporte = (cantidad: number, precioUnitario: number) => {
     return cantidad * precioUnitario;
+  };
+
+  const seleccionarProductoParaItem = (itemId: string, producto: Producto) => {
+    setItems(
+      items.map((item) => {
+        if (item.id === itemId) {
+          const nuevaCantidad = item.cantidad <= 0 ? 1 : item.cantidad;
+          const precio = nuevaCantidad >= 12 ? producto.precioMayoreo : producto.precioNormal;
+          return {
+            ...item,
+            cantidad: nuevaCantidad,
+            descripcion: producto.nombre,
+            precioUnitario: precio,
+            importe: calcularImporte(nuevaCantidad, precio),
+          };
+        }
+        return item;
+      })
+    );
   };
 
   const agregarItem = () => {
@@ -108,10 +145,18 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
         if (item.id === id) {
           const updated = { ...item, [campo]: valor };
           if (campo === "cantidad" || campo === "precioUnitario") {
-            updated.importe = calcularImporte(
-              Number(campo === "cantidad" ? valor : item.cantidad),
-              Number(campo === "precioUnitario" ? valor : item.precioUnitario)
-            );
+            let cantidad = Number(campo === "cantidad" ? valor : item.cantidad);
+            let precioUnitario = Number(campo === "precioUnitario" ? valor : item.precioUnitario);
+
+            if (campo === "cantidad") {
+              const prod = productos.find((p) => p.nombre === item.descripcion);
+              if (prod) {
+                precioUnitario = cantidad >= 12 ? prod.precioMayoreo : prod.precioNormal;
+                updated.precioUnitario = precioUnitario;
+              }
+            }
+
+            updated.importe = calcularImporte(cantidad, precioUnitario);
           }
           return updated;
         }
@@ -358,14 +403,27 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
                   placeholder="0"
                 />
               </div>
-              <div className="col-span-4">
+              <div className="col-span-4 flex gap-1 items-start">
                 <Textarea
                   value={item.descripcion}
                   onChange={(e) => actualizarItem(item.id, "descripcion", e.target.value)}
                   placeholder="Descripción del producto"
                   rows={2}
-                  className="resize-none min-h-[60px]"
+                  className="resize-none min-h-[60px] flex-1"
                 />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setActiveItemId(item.id);
+                    setShowProductoDialog(true);
+                  }}
+                  className="text-[#ff7908] hover:text-[#ffac08] hover:bg-orange-50 border border-orange-100 h-10 w-10 flex-shrink-0 mt-2.5 rounded-xl"
+                  title="Buscar producto en catálogo"
+                >
+                  <Search className="w-4 h-4" />
+                </Button>
               </div>
               <div className="col-span-2">
                 <Input
@@ -427,6 +485,17 @@ export function NotaForm({ initialData, onSubmit, onCancel, submitLabel = "Crear
         onSelect={(cliente) => {
           setClienteNombre(cliente.nombre);
           if (cliente.telefono) setClienteTelefono(cliente.telefono);
+        }}
+      />
+
+      <SeleccionarProductoDialog
+        open={showProductoDialog}
+        onOpenChange={setShowProductoDialog}
+        onSelect={(producto) => {
+          if (activeItemId) {
+            seleccionarProductoParaItem(activeItemId, producto);
+            setActiveItemId(null);
+          }
         }}
       />
     </form>

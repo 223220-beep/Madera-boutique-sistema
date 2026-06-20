@@ -1,3 +1,5 @@
+import { Producto } from "../types/producto";
+
 // Configuración del servidor
 // Si estás en la computadora del servidor, usa localhost
 // Si estás en otra computadora de la red, cambia a la IP del servidor
@@ -130,6 +132,29 @@ export const clientesApi = {
 
     delete: (id: string) =>
         request(`/api/clientes/${id}`, {
+            method: 'DELETE',
+        }),
+};
+
+// ========== API DE PRODUCTOS ==========
+
+export const productosApi = {
+    getAll: (): Promise<Producto[]> => request('/api/productos'),
+
+    add: (data: { codigo?: string; nombre: string; precioNormal: number; precioMayoreo: number }): Promise<Producto> =>
+        request('/api/productos', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+
+    update: (id: string, data: { codigo?: string; text?: string; nombre: string; precioNormal: number; precioMayoreo: number }): Promise<Producto> =>
+        request(`/api/productos/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        }),
+
+    delete: (id: string) =>
+        request(`/api/productos/${id}`, {
             method: 'DELETE',
         }),
 };

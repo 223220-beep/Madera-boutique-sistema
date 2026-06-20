@@ -203,6 +203,12 @@ export function NotasListPage() {
                   Directorio
                 </Button>
               </Link>
+              <Link to="/productos">
+                <Button variant="outline" className="border-amber-500 text-amber-700 hover:bg-amber-50">
+                  <Package className="w-4 h-4 mr-2" />
+                  Productos
+                </Button>
+              </Link>
               <Link to="/crear">
                 <Button className="bg-[#ff7908] hover:bg-[#ffac08] text-white">
                   <Plus className="w-4 h-4 mr-2" />

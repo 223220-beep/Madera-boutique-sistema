@@ -225,6 +225,18 @@ async function initDatabase() {
   `);
 
   db.run(`
+    CREATE TABLE IF NOT EXISTS productos (
+      id TEXT PRIMARY KEY,
+      codigo TEXT DEFAULT '',
+      nombre TEXT NOT NULL,
+      precioNormal REAL DEFAULT 0,
+      precioMayoreo REAL DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    )
+  `);
+
+  db.run(`
     CREATE TABLE IF NOT EXISTS contador (
       clave TEXT PRIMARY KEY,
       valor INTEGER NOT NULL DEFAULT 0
@@ -275,6 +287,10 @@ async function initDatabase() {
     db.run('ALTER TABLE notas ADD COLUMN comentarios TEXT DEFAULT ""');
   } catch (e) {
   }
+  try {
+    db.run('ALTER TABLE productos ADD COLUMN precioNormal REAL DEFAULT 0');
+  } catch (e) {
+  }
 
   saveDatabase();
   console.log('✅ Tablas de base de datos inicializadas');
@@ -315,10 +331,10 @@ function getNextNumeroNota() {
   return row.valor.toString().padStart(5, '0');
 }
 
-function enrichNota(nota) {
+function enrichNota(nota, includeImages = true) {
   const items = queryAll('SELECT * FROM items_nota WHERE notaId = ? ORDER BY ordenIndex ASC', [nota.id]);
   const abonos = queryAll('SELECT * FROM abonos WHERE notaId = ? ORDER BY fecha ASC', [nota.id]);
-  const imagenes = queryAll('SELECT imagenData FROM imagenes_referencia WHERE notaId = ? ORDER BY ordenIndex ASC', [nota.id]);
+  const imagenes = includeImages ? queryAll('SELECT imagenData FROM imagenes_referencia WHERE notaId = ? ORDER BY ordenIndex ASC', [nota.id]) : [];
 
   let asignadoArreglo = [];
   if (nota.asignadoA) {
@@ -355,13 +371,13 @@ function enrichNota(nota) {
     disenadoresTerminados: disenadoresTerminados,
     items: items.map(i => ({ ...i, terminado: !!i.terminado, entregado: !!i.entregado })),
     abonos: abonos,
-    imagenesReferencia: imagenes.map(i => i.imagenData),
+    imagenesReferencia: includeImages ? imagenes.map(i => i.imagenData) : [],
   };
 }
 
 function getAllNotas() {
   const notas = queryAll('SELECT * FROM notas WHERE eliminada = 0 ORDER BY createdAt DESC');
-  return notas.map(nota => enrichNota(nota));
+  return notas.map(nota => enrichNota(nota, false));
 }
 
 function getNotaById(id) {
@@ -674,6 +690,66 @@ function updateItem(itemId, updates) {
   return true;
 }
 
+// ========== FUNCIONES DE PRODUCTOS ==========
+
+function getProductos() {
+  return queryAll('SELECT * FROM productos ORDER BY nombre ASC');
+}
+
+function addProducto(data) {
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  db.run('INSERT INTO productos (id, codigo, nombre, precioNormal, precioMayoreo, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)', [
+    id,
+    data.codigo || '',
+    data.nombre,
+    Number(data.precioNormal) || 0,
+    Number(data.precioMayoreo) || 0,
+    now,
+    now
+  ]);
+  saveDatabase();
+  return {
+    id,
+    codigo: data.codigo || '',
+    nombre: data.nombre,
+    precioNormal: Number(data.precioNormal) || 0,
+    precioMayoreo: Number(data.precioMayoreo) || 0
+  };
+}
+
+function updateProducto(id, data) {
+  const existing = queryOne('SELECT * FROM productos WHERE id = ?', [id]);
+  if (!existing) return null;
+  
+  const now = new Date().toISOString();
+  db.run('UPDATE productos SET codigo = ?, nombre = ?, precioNormal = ?, precioMayoreo = ?, updatedAt = ? WHERE id = ?', [
+    data.codigo || '',
+    data.nombre,
+    Number(data.precioNormal) || 0,
+    Number(data.precioMayoreo) || 0,
+    now,
+    id
+  ]);
+  saveDatabase();
+  return {
+    id,
+    codigo: data.codigo || '',
+    nombre: data.nombre,
+    precioNormal: Number(data.precioNormal) || 0,
+    precioMayoreo: Number(data.precioMayoreo) || 0
+  };
+}
+
+function deleteProducto(id) {
+  const existing = queryOne('SELECT * FROM productos WHERE id = ?', [id]);
+  if (!existing) return false;
+  
+  db.run('DELETE FROM productos WHERE id = ?', [id]);
+  saveDatabase();
+  return true;
+}
+
 module.exports = {
   initDatabase,
   getAllNotas,
@@ -690,4 +766,8 @@ module.exports = {
   addCliente,
   updateCliente,
   deleteCliente,
+  getProductos,
+  addProducto,
+  updateProducto,
+  deleteProducto,
 };

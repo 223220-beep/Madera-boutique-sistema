@@ -7,6 +7,7 @@ import { DisenadoresPage } from "./pages/DisenadoresPage";
 import { CalendarioPage } from "./pages/CalendarioPage";
 import { CajaPage } from "./pages/CajaPage";
 import { DirectorioPage } from "./pages/DirectorioPage";
+import { ProductosPage } from "./pages/ProductosPage";
 import { Layout } from "./components/Layout";
 import { ErrorPage } from "./components/ErrorPage";
 
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: "calendario", Component: CalendarioPage },
       { path: "caja", Component: CajaPage },
       { path: "directorio", Component: DirectorioPage },
+      { path: "productos", Component: ProductosPage },
     ],
   },
 ]);
