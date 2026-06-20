@@ -61,7 +61,7 @@ export function SeleccionarProductoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[80vh] flex flex-col bg-white rounded-3xl border border-orange-100">
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col bg-white rounded-3xl border border-orange-100">
         <DialogHeader>
           <DialogTitle className="text-xl font-extrabold text-orange-600 uppercase tracking-tight flex items-center gap-2">
             <Package className="w-5 h-5" />
@@ -101,20 +101,20 @@ export function SeleccionarProductoDialog({
                   onOpenChange(false);
                 }}
               >
-                <div className="space-y-0.5 flex-1 min-w-0 pr-4">
-                  <div className="flex items-center gap-2">
-                    {p.codigo && (
-                      <span className="text-xs bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded-full">
+                <div className="flex-1 min-w-0 pr-4 flex flex-col gap-1">
+                  {p.codigo && (
+                    <div>
+                      <span className="text-xs bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded-full inline-block">
                         {p.codigo}
                       </span>
-                    )}
-                    <span className="font-bold text-gray-800 truncate block">
-                      {p.nombre}
-                    </span>
-                  </div>
+                    </div>
+                  )}
+                  <span className="font-bold text-gray-800 text-sm sm:text-base leading-snug whitespace-normal break-words">
+                    {p.nombre}
+                  </span>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right flex flex-col justify-center">
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <div className="text-right flex flex-col justify-center min-w-[100px]">
                     <span className="text-xs text-gray-500 font-medium">Normal: ${p.precioNormal.toFixed(2)}</span>
                     <span className="font-bold text-orange-600 text-sm tracking-tight">Mayoreo: ${p.precioMayoreo.toFixed(2)}</span>
                   </div>
