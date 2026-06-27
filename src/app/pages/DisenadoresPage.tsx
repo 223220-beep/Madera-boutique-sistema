@@ -42,6 +42,7 @@ export function DisenadoresPage() {
   const [filterStartDate, setFilterStartDate] = useState<string>(searchParams.get("desde") || "");
   const [filterEndDate, setFilterEndDate] = useState<string>(searchParams.get("hasta") || "");
   const [activeTab, setActiveTab] = useState<string>(searchParams.get("tab") || "pendientes");
+  const [searchQueryTerminadas, setSearchQueryTerminadas] = useState("");
 
   const [disenadores, setDisenadores] = useState<string[]>([]);
   const [showGestionDialog, setShowGestionDialog] = useState(false);
@@ -360,6 +361,15 @@ export function DisenadoresPage() {
 
   const stats = getNotasPorDisenador();
 
+  const notasTerminadasFiltradas = notasTerminadas.filter(nota => {
+    if (!searchQueryTerminadas) return true;
+    const q = searchQueryTerminadas.toLowerCase();
+    return (
+      nota.numeroNota.toString().includes(q) ||
+      nota.clienteNombre.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -488,8 +498,16 @@ export function DisenadoresPage() {
             </TabsContent>
 
             <TabsContent value="terminadas" className="mt-6">
-              <div className="flex justify-between items-end mb-4 border-b border-gray-200 pb-2">
-                <p className="text-gray-500 text-sm">Estas notas ya fueron finalizadas. Quítalas de tu vista cuando termines.</p>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 border-b border-gray-200 pb-4 gap-4">
+                <div className="flex-1">
+                  <p className="text-gray-500 text-sm mb-2">Estas notas ya fueron finalizadas. Quítalas de tu vista cuando termines.</p>
+                  <Input
+                    placeholder="Buscar por cliente o # de nota..."
+                    value={searchQueryTerminadas}
+                    onChange={(e) => setSearchQueryTerminadas(e.target.value)}
+                    className="max-w-sm"
+                  />
+                </div>
                 {notasTerminadas.length > 0 && (
                   <Button
                     variant="destructive"
@@ -517,9 +535,11 @@ export function DisenadoresPage() {
               </div>
               {notasTerminadas.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">No hay notas terminadas en tu lista</p>
+              ) : notasTerminadasFiltradas.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No se encontraron notas que coincidan con la búsqueda</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {notasTerminadas.map((nota) => (
+                  {notasTerminadasFiltradas.map((nota) => (
                     <NotaCard key={nota.id} nota={nota} />
                   ))}
                 </div>

@@ -29,6 +29,7 @@ export function AbonosDialog({ nota, open, onOpenChange, onUpdate }: AbonosDialo
   const [nuevaNota, setNuevaNota] = useState("");
   const [esTarjeta, setEsTarjeta] = useState(false);
   const [esTransferencia, setEsTransferencia] = useState(false);
+  const [fechaAbono, setFechaAbono] = useState(() => new Date().toISOString().split('T')[0]);
 
   const totalAbonado = abonos.reduce((sum, abono) => sum + abono.monto, 0);
   const saldoPendiente = nota.total - totalAbonado;
@@ -45,7 +46,14 @@ export function AbonosDialog({ nota, open, onOpenChange, onUpdate }: AbonosDialo
     const finalNotaText = prefix + (nuevaNota || "");
 
     const now = new Date();
-    const finalDate = now.toISOString();
+    let finalDate;
+    if (fechaAbono) {
+      const [year, month, day] = fechaAbono.split('-').map(Number);
+      const dateObj = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
+      finalDate = dateObj.toISOString();
+    } else {
+      finalDate = now.toISOString();
+    }
 
     const nuevoAbono: Abono = {
       id: generateId(),
@@ -59,6 +67,7 @@ export function AbonosDialog({ nota, open, onOpenChange, onUpdate }: AbonosDialo
     setNuevaNota("");
     setEsTarjeta(false);
     setEsTransferencia(false);
+    setFechaAbono(new Date().toISOString().split('T')[0]);
   };
 
   const eliminarAbono = (id: string) => {
@@ -133,6 +142,15 @@ export function AbonosDialog({ nota, open, onOpenChange, onUpdate }: AbonosDialo
                 />
               </div>
               <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-500">Fecha del Pago</Label>
+                <Input
+                  type="date"
+                  value={fechaAbono}
+                  onChange={(e) => setFechaAbono(e.target.value)}
+                  className="bg-white border-slate-200 h-10 text-slate-700 font-semibold"
+                />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
                 <Label className="text-xs font-bold text-slate-500">Referencia (Opcional)</Label>
                 <Input
                   type="text"
